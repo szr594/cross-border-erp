@@ -1,0 +1,12 @@
+.idea/
+.vscode/
+.env
+*.log
+
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+.pnpm-store/
+
+uploads/

@@ -1,0 +1,16 @@
+:root {
+  --erp-primary: #215c52;
+  --erp-primary-soft: #e7f1ee;
+  --erp-accent: #d58b35;
+  --erp-text: #263330;
+  --erp-text-muted: #6f7d79;
+  --erp-border: #dce5e2;
+  --erp-surface: #ffffff;
+  --erp-canvas: #f3f6f5;
+  --erp-sidebar: #173b35;
+  --erp-radius: 10px;
+  --erp-shadow: 0 12px 30px rgb(28 55 49 / 8%);
+  --el-color-primary: var(--erp-primary);
+  --el-border-radius-base: 8px;
+}
+
