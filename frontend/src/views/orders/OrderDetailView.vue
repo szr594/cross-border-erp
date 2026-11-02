@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { ArrowLeft, Clock, Location, Phone, User } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '@/api/http'
+import { authState } from '@/api/auth'
 import {
   cancelOrder, changeResponsibleUser, createProcurementRequests, getOrderDetail, getOrderEvents,
-  getOrderFilterOptions, getOrderFulfillment, openOrderException, resolveOrderException,
-  type OrderDetail, type OrderEventPage, type OrderFilterOptions, type OrderFulfillment, type OrderItem,
-  type ProcurementItemCommand,
+  getOrderFilterOptions, getOrderFulfillment, getOrderProcurementRequests, openOrderException,
+  resolveOrderException, withdrawProcurementRequest, type OrderDetail, type OrderEventPage,
+  type OrderFilterOptions, type OrderFulfillment, type OrderItem, type OrderProcurementRequest,
+  type OrderProcurementRequestPage, type ProcurementItemCommand,
 } from '@/api/orders'
 import CancelOrderDialog from '@/components/orders/CancelOrderDialog.vue'
 import OrderExceptionDialog from '@/components/orders/OrderExceptionDialog.vue'
 import OrderStageTag from '@/components/orders/OrderStageTag.vue'
 import ProcurementRequestDialog from '@/components/orders/ProcurementRequestDialog.vue'
+import ProcurementRequestPanel from '@/components/orders/ProcurementRequestPanel.vue'
 import ResponsibleUserDialog from '@/components/orders/ResponsibleUserDialog.vue'
 
 const route = useRoute()
@@ -24,7 +27,10 @@ const eventsLoading = ref(false)
 const detail = ref<OrderDetail | null>(null)
 const fulfillment = ref<OrderFulfillment | null>(null)
 const events = ref<OrderEventPage | null>(null)
+const procurementRequests = ref<OrderProcurementRequestPage | null>(null)
 const eventPage = ref(1)
+const procurementPage = ref(1)
+const procurementLoading = ref(false)
 const commandLoading = ref(false)
 const responsibleDialog = ref(false)
 const procurementDialog = ref(false)
@@ -32,6 +38,9 @@ const exceptionDialog = ref(false)
 const cancelDialog = ref(false)
 const options = ref<OrderFilterOptions>({ stores: [], responsibleUsers: [], externalStatuses: [], fulfillmentStages: [] })
 const orderId = computed(() => Number(route.params.orderId))
+const canViewProcurement = computed(() => authState.user?.roles.some(
+  (role) => ['OWNER', 'OPERATIONS', 'PROCUREMENT'].includes(role),
+) ?? false)
 const fullAddress = computed(() => {
   const customer = detail.value?.customer
   if (!customer) return ''
@@ -68,12 +77,12 @@ async function runCommand(action: () => Promise<unknown>, successMessage: string
     await action()
     close()
     ElMessage.success(successMessage)
-    await loadOrder()
+    await Promise.all([loadOrder(), loadProcurementRequests()])
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       ElMessage.warning('订单数据已经变化，已为你刷新，请确认后重试')
       close()
-      await loadOrder()
+      await Promise.all([loadOrder(), loadProcurementRequests()])
     } else {
       ElMessage.error(error instanceof ApiError ? error.message : '操作失败，请稍后重试')
     }
@@ -119,6 +128,39 @@ async function loadEvents(page: number) {
   finally { eventsLoading.value = false }
 }
 
+async function loadProcurementRequests(page = procurementPage.value) {
+  if (!canViewProcurement.value) return
+  procurementLoading.value = true
+  try {
+    procurementRequests.value = await getOrderProcurementRequests(orderId.value, page, 10)
+    procurementPage.value = page
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '采购申请记录加载失败')
+  } finally { procurementLoading.value = false }
+}
+
+async function confirmWithdraw(request: OrderProcurementRequest) {
+  try {
+    const result = await ElMessageBox.prompt(
+      `撤回“${request.orderItem.productName}”的采购申请后，数量将重新计入采购缺口。`,
+      '撤回采购申请',
+      {
+        type: 'warning', inputPlaceholder: '填写撤回原因', inputType: 'textarea',
+        inputValidator: (value) => value.trim().length > 0 || '请填写撤回原因',
+        confirmButtonText: '确认撤回', cancelButtonText: '返回', confirmButtonClass: 'el-button--danger',
+      },
+    )
+    void runCommand(
+      () => withdrawProcurementRequest(orderId.value, request.id, {
+        reason: result.value.trim(), version: request.version,
+      }),
+      '采购申请已撤回', () => undefined,
+    )
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error('撤回确认未完成')
+  }
+}
+
 function formatDate(value: string | null | undefined) {
   if (!value) return '—'
   return new Intl.DateTimeFormat('zh-CN', {
@@ -141,7 +183,7 @@ function eventName(type: string) {
   return names[type] ?? type
 }
 
-onMounted(() => { void Promise.all([loadOrder(), loadOptions()]) })
+onMounted(() => { void Promise.all([loadOrder(), loadOptions(), loadProcurementRequests()]) })
 </script>
 
 <template>
@@ -184,6 +226,8 @@ onMounted(() => { void Promise.all([loadOrder(), loadOptions()]) })
               </article>
             </div>
           </section>
+
+          <ProcurementRequestPanel v-if="canViewProcurement" :page="procurementRequests" :loading="procurementLoading" @page-change="loadProcurementRequests" @withdraw="confirmWithdraw" />
 
           <section class="panel events-panel" v-loading="eventsLoading">
             <div class="panel-heading"><div><span class="section-kicker">AUDIT TRAIL</span><h3>订单事件</h3></div><span>共 {{ events?.totalElements ?? 0 }} 条</span></div>

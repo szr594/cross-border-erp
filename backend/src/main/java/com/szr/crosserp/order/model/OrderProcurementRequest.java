@@ -73,7 +73,11 @@ public class OrderProcurementRequest {
     public SalesOrderItem getOrderItem() { return orderItem; }
     public int getRequestedQuantity() { return requestedQuantity; }
     public ProcurementRequestStatus getStatus() { return status; }
+    public User getRequestedBy() { return requestedBy; }
     public Instant getRequestedAt() { return requestedAt; }
+    public User getWithdrawnBy() { return withdrawnBy; }
+    public Instant getWithdrawnAt() { return withdrawnAt; }
+    public String getNote() { return note; }
     public long getVersion() { return version; }
 
     public void withdraw(User actor, Instant now, String reason) {

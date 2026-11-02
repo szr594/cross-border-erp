@@ -112,6 +112,12 @@ ready
 
 服务端在同一事务重新计算缺口。任一商品无效时整个请求失败，不允许部分成功。
 
+### `GET /api/orders/{orderId}/procurement-requests`
+
+老板、运营和采购可分页查看订单采购申请，默认按申请时间倒序。响应包含订单商品摘要、申请数量、状态、申请/撤回人员、时间、备注和乐观锁版本。
+
+仅 `REQUESTED` 状态返回 `canWithdraw: true`；`CONVERTED` 和 `WITHDRAWN` 不允许撤回。仓库和打包角色返回 HTTP 403。
+
 ### `POST /api/orders/{orderId}/procurement-requests/{requestId}/withdraw`
 
 ```json

@@ -217,6 +217,31 @@ class OrderQueryControllerTest {
             .andExpect(jsonPath("$.items[0].toValue").doesNotExist());
     }
 
+    @Test
+    void returnsProcurementRequestsWithPaginationAndWithdrawCapability() throws Exception {
+        mockMvc.perform(get("/api/orders/{orderId}/procurement-requests", requestedOrderId)
+                .param("page", "1")
+                .param("size", "10")
+                .with(actor("PROCUREMENT")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].orderItem.productName").value("演示红色商品"))
+            .andExpect(jsonPath("$.items[0].requestedQuantity").value(2))
+            .andExpect(jsonPath("$.items[0].status").value("REQUESTED"))
+            .andExpect(jsonPath("$.items[0].requestedBy.loginName").value("order-owner"))
+            .andExpect(jsonPath("$.items[0].canWithdraw").value(true))
+            .andExpect(jsonPath("$.items[0].version").value(0))
+            .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void warehouseCannotViewProcurementRequests() throws Exception {
+        mockMvc.perform(get("/api/orders/{orderId}/procurement-requests", requestedOrderId)
+                .with(actor("WAREHOUSE")))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("ORDER_COMMAND_FORBIDDEN"));
+    }
+
     private Long insertOrder(
         String orderNo,
         String externalOrderId,

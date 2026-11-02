@@ -6,6 +6,7 @@ import com.szr.crosserp.order.dto.OrderEventPageResponse;
 import com.szr.crosserp.order.dto.OrderFilterOptionsResponse;
 import com.szr.crosserp.order.dto.OrderFulfillmentResponse;
 import com.szr.crosserp.order.dto.OrderPageResponse;
+import com.szr.crosserp.order.dto.OrderProcurementRequestPageResponse;
 import com.szr.crosserp.order.dto.OrderQuery;
 import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.service.OrderQueryService;
@@ -77,6 +78,17 @@ public class OrderController {
     ) {
         List<String> roles = jwt.getClaimAsStringList("roles");
         return queryService.findEvents(orderId, page, size, roles == null ? List.of() : roles);
+    }
+
+    @GetMapping("/{orderId}/procurement-requests")
+    OrderProcurementRequestPageResponse procurementRequests(
+        @PathVariable Long orderId,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @AuthenticationPrincipal Jwt jwt
+    ) {
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        return queryService.findProcurementRequests(orderId, page, size, roles == null ? List.of() : roles);
     }
 
     private ExternalOrderStatus parseStatus(String value) {

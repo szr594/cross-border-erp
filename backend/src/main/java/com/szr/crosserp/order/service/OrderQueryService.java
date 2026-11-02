@@ -11,6 +11,9 @@ import com.szr.crosserp.order.dto.OrderFulfillmentResponse;
 import com.szr.crosserp.order.dto.OrderItemResponse;
 import com.szr.crosserp.order.dto.OrderListItemResponse;
 import com.szr.crosserp.order.dto.OrderPageResponse;
+import com.szr.crosserp.order.dto.OrderProcurementRequestDetailResponse;
+import com.szr.crosserp.order.dto.OrderProcurementRequestPageResponse;
+import com.szr.crosserp.order.dto.ProcurementOrderItemResponse;
 import com.szr.crosserp.order.dto.OrderQuery;
 import com.szr.crosserp.order.dto.OrderSummaryResponse;
 import com.szr.crosserp.order.dto.StoreSummaryResponse;
@@ -197,6 +200,39 @@ public class OrderQueryService {
             size,
             result.getTotalElements(),
             result.getTotalPages()
+        );
+    }
+
+    public OrderProcurementRequestPageResponse findProcurementRequests(
+        Long orderId, int page, int size, Collection<String> roles
+    ) {
+        if (page < 1 || size < 1 || size > 100) {
+            throw invalid("采购申请分页参数无效");
+        }
+        boolean allowed = roles != null && roles.stream()
+            .anyMatch(Set.of("OWNER", "OPERATIONS", "PROCUREMENT")::contains);
+        if (!allowed) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ORDER_COMMAND_FORBIDDEN", "无权查看采购申请");
+        }
+        requireOrder(orderId);
+        Page<OrderProcurementRequest> result = requestRepository.findByOrderItemOrderId(
+            orderId,
+            PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "requestedAt").and(
+                Sort.by(Sort.Direction.DESC, "id")
+            ))
+        );
+        return new OrderProcurementRequestPageResponse(
+            result.getContent().stream().map(request -> new OrderProcurementRequestDetailResponse(
+                request.getId(),
+                new ProcurementOrderItemResponse(
+                    request.getOrderItem().getId(), request.getOrderItem().getExternalSku(),
+                    request.getOrderItem().getProductName(), request.getOrderItem().getVariantName()
+                ),
+                request.getRequestedQuantity(), request.getStatus(), user(request.getRequestedBy()),
+                request.getRequestedAt(), user(request.getWithdrawnBy()), request.getWithdrawnAt(),
+                request.getNote(), request.getVersion(), request.getStatus() == ProcurementRequestStatus.REQUESTED
+            )).toList(),
+            page, size, result.getTotalElements(), result.getTotalPages()
         );
     }
 

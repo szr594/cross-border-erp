@@ -61,6 +61,15 @@ export interface ProcurementRequestResponse {
 }
 export interface ProcurementRequestBatchResponse { requests: ProcurementRequestResponse[]; version: number }
 export interface OrderCommandResponse { orderId: number; externalStatus: string; exception: boolean; version: number }
+export interface ProcurementOrderItem { id: number; externalSku: string | null; productName: string; variantName: string | null }
+export interface OrderProcurementRequest {
+  id: number; orderItem: ProcurementOrderItem; requestedQuantity: number; status: string
+  requestedBy: UserSummary; requestedAt: string; withdrawnBy: UserSummary | null; withdrawnAt: string | null
+  note: string | null; version: number; canWithdraw: boolean
+}
+export interface OrderProcurementRequestPage {
+  items: OrderProcurementRequest[]; page: number; size: number; totalElements: number; totalPages: number
+}
 
 export function getOrderFilterOptions() { return requestJson<OrderFilterOptions>('/api/orders/filter-options') }
 export function getOrders(query: OrderListQuery) {
@@ -74,6 +83,9 @@ export function getOrderDetail(orderId: number) { return requestJson<OrderDetail
 export function getOrderFulfillment(orderId: number) { return requestJson<OrderFulfillment>(`/api/orders/${orderId}/fulfillment`) }
 export function getOrderEvents(orderId: number, page = 1, size = 20) {
   return requestJson<OrderEventPage>(`/api/orders/${orderId}/events?page=${page}&size=${size}`)
+}
+export function getOrderProcurementRequests(orderId: number, page = 1, size = 10) {
+  return requestJson<OrderProcurementRequestPage>(`/api/orders/${orderId}/procurement-requests?page=${page}&size=${size}`)
 }
 function command<T>(path: string, method: 'POST' | 'PUT', body: object) {
   return requestJson<T>(path, { method, body: JSON.stringify(body) })
