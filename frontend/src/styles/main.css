@@ -10,6 +10,7 @@ body {
 }
 
 .app-shell { min-height: 100vh; }
+.app-shell > .el-container { min-width: 0; }
 
 .app-sidebar {
   position: relative;
@@ -145,6 +146,8 @@ body {
   .brand > div, .app-menu span, .sidebar-foot span { display: none; }
   .brand { justify-content: center; padding: 12px; }
   .app-menu .el-menu-item { justify-content: center; padding: 0 !important; }
-  .app-header { padding: 0 20px; }
-  .app-main { padding: 20px; }
+  .app-header { padding: 0 16px; }
+  .app-header h1 { font-size: 20px; }
+  .user-button > span { display: none; }
+  .app-main { min-width: 0; padding: 16px; }
 }
