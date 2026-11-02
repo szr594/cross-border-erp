@@ -33,4 +33,23 @@ Authentication details and error behavior are defined in `auth-spec.md`.
 
 The complete contract, privacy rules, concurrency behavior, and status codes are defined in `order-api.md`. Database design and module behavior are defined in `order-database.md` and `order-spec.md`.
 
+## Suppliers
+
+All authenticated employees can view supplier contact details. Only `OWNER` and `PROCUREMENT` can mutate supplier records.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/suppliers` | Page suppliers by keyword and status |
+| GET | `/api/suppliers/{supplierId}` | Return supplier details including contact fields |
+| POST | `/api/suppliers` | Create a supplier; owner or procurement only |
+| PUT | `/api/suppliers/{supplierId}` | Update a supplier with optimistic version checking |
+| POST | `/api/suppliers/{supplierId}/enable` | Enable a supplier; owner or procurement only |
+| POST | `/api/suppliers/{supplierId}/disable` | Disable a supplier; owner or procurement only |
+
+## Purchase Orders
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/purchase-orders` | Create a draft purchase order and fully convert allocated procurement requests; owner or procurement only |
+
 Remaining modules will be specified before implementation. The public project exposes only endpoints required by the approved MVP.

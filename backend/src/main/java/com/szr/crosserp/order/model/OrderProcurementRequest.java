@@ -86,4 +86,8 @@ public class OrderProcurementRequest {
         withdrawnAt = now;
         note = reason;
     }
+
+    public void convert() {
+        status = ProcurementRequestStatus.CONVERTED;
+    }
 }

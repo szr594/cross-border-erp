@@ -62,8 +62,8 @@ class OrderSchemaMigrationTest {
     @Autowired private OrderStatusEventRepository eventRepository;
 
     @Test
-    void flywayAppliesVersionTwoAndCreatesAllOrderTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+    void laterMigrationsKeepAllOrderTables() throws Exception {
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
 
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();
