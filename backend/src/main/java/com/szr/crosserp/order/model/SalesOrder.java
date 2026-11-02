@@ -160,4 +160,30 @@ public class SalesOrder {
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    public void changeResponsibleUser(User user, Instant now) {
+        responsibleUser = user;
+        updatedAt = now;
+    }
+
+    public void openException(String reason, Instant now) {
+        fulfillmentException = true;
+        exceptionReason = reason;
+        updatedAt = now;
+    }
+
+    public void resolveException(Instant now) {
+        fulfillmentException = false;
+        exceptionReason = null;
+        updatedAt = now;
+    }
+
+    public void cancel(Instant now) {
+        externalStatus = ExternalOrderStatus.CANCELED;
+        updatedAt = now;
+    }
+
+    public void touch(Instant now) {
+        updatedAt = now;
+    }
 }

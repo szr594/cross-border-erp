@@ -14,7 +14,7 @@ A portfolio-oriented cross-border order fulfillment ERP rebuilt with Java and Vu
 
 ## Current stage
 
-The repository includes the application skeleton, JWT authentication, the order-domain data layer, order query APIs, development demonstration orders, and the first Vue order workbench and detail page. CSV import and order command workflows remain deferred to later approved phases.
+The repository includes the application skeleton, JWT authentication, the order-domain data layer, order query and command APIs, development demonstration orders, and a Vue order workbench with role-aware order operations. CSV import remains deferred to a later approved phase.
 
 ## Development
 

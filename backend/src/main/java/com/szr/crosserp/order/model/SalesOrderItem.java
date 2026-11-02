@@ -101,4 +101,9 @@ public class SalesOrderItem {
     public OrderItemFulfillmentStatus getFulfillmentStatus() { return fulfillmentStatus; }
     public String getNote() { return note; }
     public long getVersion() { return version; }
+
+    public void cancel(Instant now) {
+        fulfillmentStatus = OrderItemFulfillmentStatus.CANCELED;
+        updatedAt = now;
+    }
 }

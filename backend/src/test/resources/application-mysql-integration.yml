@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${MYSQL_IT_URL:jdbc:mysql://127.0.0.1:3307/cross_border_erp_it?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&useUnicode=true&characterEncoding=utf8}
+    username: ${MYSQL_IT_USER:root}
+    password: ${MYSQL_IT_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+app:
+  auth:
+    jwt-secret: mysql-integration-secret-at-least-thirty-two-bytes
+    access-token-minutes: 15
+    refresh-token-days: 7
+    max-login-failures: 5
+    lock-minutes: 15
+    refresh-cookie-name: cross_erp_refresh
+    secure-cookie: false

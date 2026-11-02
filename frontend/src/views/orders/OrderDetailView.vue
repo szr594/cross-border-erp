@@ -5,8 +5,17 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '@/api/http'
-import { getOrderDetail, getOrderEvents, getOrderFulfillment, type OrderDetail, type OrderEventPage, type OrderFulfillment, type OrderItem } from '@/api/orders'
+import {
+  cancelOrder, changeResponsibleUser, createProcurementRequests, getOrderDetail, getOrderEvents,
+  getOrderFilterOptions, getOrderFulfillment, openOrderException, resolveOrderException,
+  type OrderDetail, type OrderEventPage, type OrderFilterOptions, type OrderFulfillment, type OrderItem,
+  type ProcurementItemCommand,
+} from '@/api/orders'
+import CancelOrderDialog from '@/components/orders/CancelOrderDialog.vue'
+import OrderExceptionDialog from '@/components/orders/OrderExceptionDialog.vue'
 import OrderStageTag from '@/components/orders/OrderStageTag.vue'
+import ProcurementRequestDialog from '@/components/orders/ProcurementRequestDialog.vue'
+import ResponsibleUserDialog from '@/components/orders/ResponsibleUserDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +25,12 @@ const detail = ref<OrderDetail | null>(null)
 const fulfillment = ref<OrderFulfillment | null>(null)
 const events = ref<OrderEventPage | null>(null)
 const eventPage = ref(1)
+const commandLoading = ref(false)
+const responsibleDialog = ref(false)
+const procurementDialog = ref(false)
+const exceptionDialog = ref(false)
+const cancelDialog = ref(false)
+const options = ref<OrderFilterOptions>({ stores: [], responsibleUsers: [], externalStatuses: [], fulfillmentStages: [] })
 const orderId = computed(() => Number(route.params.orderId))
 const fullAddress = computed(() => {
   const customer = detail.value?.customer
@@ -40,6 +55,61 @@ async function loadOrder() {
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '订单详情加载失败')
   } finally { loading.value = false }
+}
+
+async function loadOptions() {
+  try { options.value = await getOrderFilterOptions() }
+  catch (error) { ElMessage.error(error instanceof ApiError ? error.message : '员工选项加载失败') }
+}
+
+async function runCommand(action: () => Promise<unknown>, successMessage: string, close: () => void) {
+  commandLoading.value = true
+  try {
+    await action()
+    close()
+    ElMessage.success(successMessage)
+    await loadOrder()
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      ElMessage.warning('订单数据已经变化，已为你刷新，请确认后重试')
+      close()
+      await loadOrder()
+    } else {
+      ElMessage.error(error instanceof ApiError ? error.message : '操作失败，请稍后重试')
+    }
+  } finally { commandLoading.value = false }
+}
+
+function submitResponsible(value: { userId: number; reason: string }) {
+  if (!detail.value) return
+  void runCommand(
+    () => changeResponsibleUser(orderId.value, { ...value, version: detail.value!.version }),
+    '负责人已更新', () => { responsibleDialog.value = false },
+  )
+}
+
+function submitProcurement(value: { items: ProcurementItemCommand[]; note: string }) {
+  if (!detail.value) return
+  void runCommand(
+    () => createProcurementRequests(orderId.value, { ...value, version: detail.value!.version }),
+    '采购申请已创建', () => { procurementDialog.value = false },
+  )
+}
+
+function submitException(text: string) {
+  if (!detail.value) return
+  const action = detail.value.exception
+    ? () => resolveOrderException(orderId.value, { resolution: text, version: detail.value!.version })
+    : () => openOrderException(orderId.value, { reason: text, version: detail.value!.version })
+  void runCommand(action, detail.value.exception ? '履约异常已解决' : '履约异常已上报', () => { exceptionDialog.value = false })
+}
+
+function submitCancellation(reason: string) {
+  if (!detail.value) return
+  void runCommand(
+    () => cancelOrder(orderId.value, { reason, version: detail.value!.version }),
+    '订单已取消', () => { cancelDialog.value = false },
+  )
 }
 
 async function loadEvents(page: number) {
@@ -71,7 +141,7 @@ function eventName(type: string) {
   return names[type] ?? type
 }
 
-onMounted(() => { void loadOrder() })
+onMounted(() => { void Promise.all([loadOrder(), loadOptions()]) })
 </script>
 
 <template>
@@ -79,9 +149,10 @@ onMounted(() => { void loadOrder() })
     <div class="detail-toolbar">
       <el-button text :icon="ArrowLeft" @click="router.push('/orders')">返回订单工作台</el-button>
       <div v-if="detail" class="toolbar-actions">
-        <el-button v-if="detail.availableActions.includes('REQUEST_PROCUREMENT')" disabled>申请采购</el-button>
-        <el-button v-if="detail.availableActions.includes('OPEN_EXCEPTION')" disabled>标记异常</el-button>
-        <el-button v-if="detail.availableActions.includes('CANCEL')" type="danger" plain disabled>取消订单</el-button>
+        <el-button v-if="detail.availableActions.includes('CHANGE_RESPONSIBLE')" @click="responsibleDialog = true">调整负责人</el-button>
+        <el-button v-if="detail.availableActions.includes('REQUEST_PROCUREMENT')" type="primary" plain @click="procurementDialog = true">申请采购</el-button>
+        <el-button v-if="detail.availableActions.includes('OPEN_EXCEPTION') || detail.availableActions.includes('RESOLVE_EXCEPTION')" :type="detail.exception ? 'success' : 'warning'" plain @click="exceptionDialog = true">{{ detail.exception ? '解决异常' : '标记异常' }}</el-button>
+        <el-button v-if="detail.availableActions.includes('CANCEL')" type="danger" plain @click="cancelDialog = true">取消订单</el-button>
       </div>
     </div>
 
@@ -140,6 +211,11 @@ onMounted(() => { void loadOrder() })
       </div>
     </template>
     <el-empty v-else-if="!loading" description="订单不存在或暂时无法加载" />
+
+    <ResponsibleUserDialog v-if="detail" v-model="responsibleDialog" :users="options.responsibleUsers" :current-user-id="detail.responsibleUser?.id" :loading="commandLoading" @submit="submitResponsible" />
+    <ProcurementRequestDialog v-if="detail" v-model="procurementDialog" :items="detail.items" :loading="commandLoading" @submit="submitProcurement" />
+    <OrderExceptionDialog v-if="detail" v-model="exceptionDialog" :resolving="detail.exception" :loading="commandLoading" @submit="submitException" />
+    <CancelOrderDialog v-if="detail" v-model="cancelDialog" :order-no="detail.orderNo" :loading="commandLoading" @submit="submitCancellation" />
   </section>
 </template>
 

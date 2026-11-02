@@ -50,6 +50,17 @@ export interface OrderListQuery {
   externalStatus?: string; stage?: string; orderedFrom?: string; orderedTo?: string
   exceptionOnly?: boolean; sort?: string
 }
+export interface VersionedReasonCommand { reason: string; version: number }
+export interface ResponsibleUserCommand extends VersionedReasonCommand { userId: number }
+export interface ProcurementItemCommand { orderItemId: number; quantity: number }
+export interface ProcurementCommand { items: ProcurementItemCommand[]; note?: string; version: number }
+export interface ResolveExceptionCommand { resolution: string; version: number }
+export interface ResponsibleUserChangeResponse { orderId: number; responsibleUser: UserSummary; version: number }
+export interface ProcurementRequestResponse {
+  id: number; orderItemId: number; quantity: number; status: string; version: number
+}
+export interface ProcurementRequestBatchResponse { requests: ProcurementRequestResponse[]; version: number }
+export interface OrderCommandResponse { orderId: number; externalStatus: string; exception: boolean; version: number }
 
 export function getOrderFilterOptions() { return requestJson<OrderFilterOptions>('/api/orders/filter-options') }
 export function getOrders(query: OrderListQuery) {
@@ -63,4 +74,25 @@ export function getOrderDetail(orderId: number) { return requestJson<OrderDetail
 export function getOrderFulfillment(orderId: number) { return requestJson<OrderFulfillment>(`/api/orders/${orderId}/fulfillment`) }
 export function getOrderEvents(orderId: number, page = 1, size = 20) {
   return requestJson<OrderEventPage>(`/api/orders/${orderId}/events?page=${page}&size=${size}`)
+}
+function command<T>(path: string, method: 'POST' | 'PUT', body: object) {
+  return requestJson<T>(path, { method, body: JSON.stringify(body) })
+}
+export function changeResponsibleUser(orderId: number, body: ResponsibleUserCommand) {
+  return command<ResponsibleUserChangeResponse>(`/api/orders/${orderId}/responsible-user`, 'PUT', body)
+}
+export function createProcurementRequests(orderId: number, body: ProcurementCommand) {
+  return command<ProcurementRequestBatchResponse>(`/api/orders/${orderId}/procurement-requests`, 'POST', body)
+}
+export function withdrawProcurementRequest(orderId: number, requestId: number, body: VersionedReasonCommand) {
+  return command<ProcurementRequestResponse>(`/api/orders/${orderId}/procurement-requests/${requestId}/withdraw`, 'POST', body)
+}
+export function openOrderException(orderId: number, body: VersionedReasonCommand) {
+  return command<OrderCommandResponse>(`/api/orders/${orderId}/exceptions`, 'POST', body)
+}
+export function resolveOrderException(orderId: number, body: ResolveExceptionCommand) {
+  return command<OrderCommandResponse>(`/api/orders/${orderId}/exceptions/resolve`, 'POST', body)
+}
+export function cancelOrder(orderId: number, body: VersionedReasonCommand) {
+  return command<OrderCommandResponse>(`/api/orders/${orderId}/cancel`, 'POST', body)
 }

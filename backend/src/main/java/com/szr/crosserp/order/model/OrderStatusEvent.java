@@ -59,6 +59,16 @@ public class OrderStatusEvent {
         this.occurredAt = occurredAt;
     }
 
+    public OrderStatusEvent(
+        SalesOrder order, String eventType, String fromValue, String toValue,
+        User operator, OrderEventSource source, String remark, Instant occurredAt
+    ) {
+        this(order, eventType, operator, source, occurredAt);
+        this.fromValue = fromValue;
+        this.toValue = toValue;
+        this.remark = remark;
+    }
+
     public Long getId() { return id; }
     public SalesOrder getOrder() { return order; }
     public String getEventType() { return eventType; }

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,5 +29,13 @@ public class GlobalExceptionHandler {
             "VALIDATION_FAILED", message, Instant.now(), request.getRequestURI()
         ));
     }
-}
 
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ResponseEntity<ApiError> handleOptimisticLock(
+        ObjectOptimisticLockingFailureException exception, HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(
+            "ORDER_VERSION_CONFLICT", "数据已被其他操作修改，请刷新后重试", Instant.now(), request.getRequestURI()
+        ));
+    }
+}

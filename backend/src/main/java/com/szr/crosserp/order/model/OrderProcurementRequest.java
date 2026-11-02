@@ -64,9 +64,22 @@ public class OrderProcurementRequest {
         this.requestedAt = requestedAt;
     }
 
+    public OrderProcurementRequest(SalesOrderItem orderItem, int requestedQuantity, User requestedBy, Instant requestedAt, String note) {
+        this(orderItem, requestedQuantity, requestedBy, requestedAt);
+        this.note = note;
+    }
+
     public Long getId() { return id; }
     public SalesOrderItem getOrderItem() { return orderItem; }
     public int getRequestedQuantity() { return requestedQuantity; }
     public ProcurementRequestStatus getStatus() { return status; }
     public Instant getRequestedAt() { return requestedAt; }
+    public long getVersion() { return version; }
+
+    public void withdraw(User actor, Instant now, String reason) {
+        status = ProcurementRequestStatus.WITHDRAWN;
+        withdrawnBy = actor;
+        withdrawnAt = now;
+        note = reason;
+    }
 }
