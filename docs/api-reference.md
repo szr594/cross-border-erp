@@ -51,5 +51,8 @@ All authenticated employees can view supplier contact details. Only `OWNER` and 
 | Method | Path | Description |
 | --- | --- | --- |
 | POST | `/api/purchase-orders` | Create a draft purchase order and fully convert allocated procurement requests; owner or procurement only |
+| GET | `/api/purchase-orders` | Page and filter purchase orders |
+| GET | `/api/purchase-orders/{purchaseOrderId}` | Return purchase-order detail and safe sales-order sources |
+| GET | `/api/purchase-orders/{purchaseOrderId}/events` | Page purchase-order events |
 
 Remaining modules will be specified before implementation. The public project exposes only endpoints required by the approved MVP.
