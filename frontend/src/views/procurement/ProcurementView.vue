@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RefreshRight, Search } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 

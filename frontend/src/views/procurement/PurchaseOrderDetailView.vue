@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft, Link, RefreshRight } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -45,7 +45,10 @@ function formatDate(value: string | null) {
   }).format(new Date(value)) : '—'
 }
 function eventName(value: string) {
-  return ({ PURCHASE_ORDER_CREATED: '采购单创建' } as Record<string, string>)[value] ?? value
+  return ({
+    CREATED: '采购单创建', ORDERED: '采购下单', PARTIALLY_RECEIVED: '部分到货',
+    RECEIVED: '全部到货', COMPLETED: '采购完成', CANCELED: '采购取消',
+  } as Record<string, string>)[value] ?? value
 }
 function procurementStatusName(value: string) {
   return ({ REQUESTED: '待转单', CONVERTED: '已转单', WITHDRAWN: '已撤回' } as Record<string, string>)[value] ?? value

@@ -2,17 +2,18 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import { ensureAuthenticated } from '@/api/auth'
 import AppLayout from '@/layouts/AppLayout.vue'
-import InventoryDetailView from '@/views/inventory/InventoryDetailView.vue'
-import InventoryListView from '@/views/inventory/InventoryListView.vue'
-import LoginView from '@/views/auth/LoginView.vue'
-import OrderDetailView from '@/views/orders/OrderDetailView.vue'
-import OrderListView from '@/views/orders/OrderListView.vue'
-import PackingDetailView from '@/views/packing/PackingDetailView.vue'
-import PackingView from '@/views/packing/PackingView.vue'
-import ProcurementView from '@/views/procurement/ProcurementView.vue'
-import PurchaseOrderDetailView from '@/views/procurement/PurchaseOrderDetailView.vue'
-import ReceivingView from '@/views/receiving/ReceivingView.vue'
-import NotFoundView from '@/views/system/NotFoundView.vue'
+
+const InventoryDetailView = () => import('@/views/inventory/InventoryDetailView.vue')
+const InventoryListView = () => import('@/views/inventory/InventoryListView.vue')
+const LoginView = () => import('@/views/auth/LoginView.vue')
+const OrderDetailView = () => import('@/views/orders/OrderDetailView.vue')
+const OrderListView = () => import('@/views/orders/OrderListView.vue')
+const PackingDetailView = () => import('@/views/packing/PackingDetailView.vue')
+const PackingView = () => import('@/views/packing/PackingView.vue')
+const ProcurementView = () => import('@/views/procurement/ProcurementView.vue')
+const PurchaseOrderDetailView = () => import('@/views/procurement/PurchaseOrderDetailView.vue')
+const ReceivingView = () => import('@/views/receiving/ReceivingView.vue')
+const NotFoundView = () => import('@/views/system/NotFoundView.vue')
 
 const router = createRouter({
   history: createWebHistory(),
