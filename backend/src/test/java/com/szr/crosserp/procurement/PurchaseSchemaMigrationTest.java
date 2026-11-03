@@ -70,8 +70,8 @@ class PurchaseSchemaMigrationTest {
     @Autowired PurchaseOrderEventRepository eventRepository;
 
     @Test
-    void flywayAppliesVersionThreeAndCreatesPurchaseTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+    void laterMigrationsKeepAllPurchaseTables() throws Exception {
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
 
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();

@@ -55,4 +55,21 @@ All authenticated employees can view supplier contact details. Only `OWNER` and 
 | GET | `/api/purchase-orders/{purchaseOrderId}` | Return purchase-order detail and safe sales-order sources |
 | GET | `/api/purchase-orders/{purchaseOrderId}/events` | Page purchase-order events |
 
+## Receiving
+
+All authenticated employees can view domestic packages and goods receipts. Only `OWNER` and `WAREHOUSE` can register packages, confirm receipts, or cancel a package that has no confirmed receipt.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/domestic-packages` | Page and filter domestic packages |
+| GET | `/api/domestic-packages/lookup` | Locate a package by exact tracking number |
+| GET | `/api/domestic-packages/{packageId}` | Return package, purchase-item progress, and receipt summaries |
+| GET | `/api/domestic-packages/{packageId}/events` | Page receiving events |
+| POST | `/api/domestic-packages` | Register a domestic package; owner or warehouse only |
+| POST | `/api/domestic-packages/{packageId}/receipts` | Confirm one immutable receipt batch; owner or warehouse only |
+| POST | `/api/domestic-packages/{packageId}/cancel` | Cancel an unreceived package; owner or warehouse only |
+| GET | `/api/goods-receipts/{receiptId}` | Return one immutable goods-receipt detail |
+
+The complete receiving contract, quantity semantics, idempotency behavior, and error codes are defined in `receiving-api.md`. The approved module boundary and database design are defined in `receiving-spec.md`.
+
 Remaining modules will be specified before implementation. The public project exposes only endpoints required by the approved MVP.

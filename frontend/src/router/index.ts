@@ -13,6 +13,8 @@ const PackingView = () => import('@/views/packing/PackingView.vue')
 const ProcurementView = () => import('@/views/procurement/ProcurementView.vue')
 const PurchaseOrderDetailView = () => import('@/views/procurement/PurchaseOrderDetailView.vue')
 const ReceivingView = () => import('@/views/receiving/ReceivingView.vue')
+const ReceivingPackageDetailView = () => import('@/views/receiving/ReceivingPackageDetailView.vue')
+const GoodsReceiptDetailView = () => import('@/views/receiving/GoodsReceiptDetailView.vue')
 const NotFoundView = () => import('@/views/system/NotFoundView.vue')
 
 const router = createRouter({
@@ -36,6 +38,8 @@ const router = createRouter({
         { path: 'inventory', name: 'inventory', component: InventoryListView, meta: { title: '库存管理' } },
         { path: 'inventory/:skuId', name: 'inventory-detail', component: InventoryDetailView, meta: { title: '库存详情' } },
         { path: 'receiving', name: 'receiving', component: ReceivingView, meta: { title: '到货收货' } },
+        { path: 'receiving/packages/:packageId', name: 'receiving-package-detail', component: ReceivingPackageDetailView, meta: { title: '包裹详情' } },
+        { path: 'receiving/receipts/:receiptId', name: 'goods-receipt-detail', component: GoodsReceiptDetailView, meta: { title: '收货批次' } },
         { path: 'packing', name: 'packing', component: PackingView, meta: { title: '打包管理' } },
         { path: 'packing/:orderId', name: 'packing-detail', component: PackingDetailView, meta: { title: '打包详情' } },
       ],

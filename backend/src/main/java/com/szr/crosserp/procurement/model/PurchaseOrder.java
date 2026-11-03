@@ -119,6 +119,19 @@ public class PurchaseOrder {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
+    public void updateReceivingStatus(boolean anyInspected, boolean allInspected) {
+        if (status == PurchaseOrderStatus.CANCELED || status == PurchaseOrderStatus.COMPLETED) {
+            throw new IllegalStateException("purchase order cannot receive goods in current status");
+        }
+        if (allInspected) {
+            status = PurchaseOrderStatus.RECEIVED;
+        } else if (anyInspected) {
+            status = PurchaseOrderStatus.PARTIALLY_RECEIVED;
+        } else {
+            status = PurchaseOrderStatus.ORDERED;
+        }
+    }
+
     @PrePersist
     void prePersist() {
         Instant now = Instant.now();

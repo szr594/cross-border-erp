@@ -109,6 +109,13 @@ public class PurchaseOrderItem {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
+    public void receiveAccepted(int quantity) {
+        if (quantity < 0 || receivedQuantity + quantity > purchasedQuantity) {
+            throw new IllegalArgumentException("accepted quantity exceeds purchased quantity");
+        }
+        receivedQuantity += quantity;
+    }
+
     @PrePersist
     void prePersist() {
         Instant now = Instant.now();
