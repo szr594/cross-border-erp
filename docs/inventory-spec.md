@@ -265,7 +265,7 @@ V5 上线前已经确认且 `inventoryPosted = false` 的收货明细，由受�
 
 ## 7. API 边界设计
 
-历史收货幂等入库补偿接口已经实现并写入 `api-reference.md`。其余查询、人工分配、释放、调整和解除隔离接口仍属于后续阶段设计，完成实现和测试后再加入正式接口文档。
+历史收货幂等入库补偿和只读查询接口已经实现并写入 `api-reference.md`。人工分配、释放、调整和解除隔离接口仍属于后续阶段设计，完成实现和测试后再加入正式接口文档。
 
 ### 7.1 查询接口
 
@@ -295,6 +295,7 @@ V5 上线前已经确认且 `inventoryPosted = false` 的收货明细，由受�
 
 | HTTP | 错误码 | 场景 |
 | --- | --- | --- |
+| 400 | `INVENTORY_QUERY_INVALID` | 分页、筛选枚举或查询文本不合法 |
 | 400 | `INVENTORY_COMMAND_INVALID` | 数量、原因或幂等键不合法 |
 | 403 | `INVENTORY_FORBIDDEN` | 当前角色无写权限 |
 | 404 | `INVENTORY_LOT_NOT_FOUND` | 库存批次不存在 |

@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface SalesOrderItemRepository extends JpaRepository<SalesOrderItem, Long> {
     Optional<SalesOrderItem> findByOrderIdAndExternalItemId(Long orderId, String externalItemId);
     List<SalesOrderItem> findByOrderIdInOrderByIdAsc(List<Long> orderIds);
+    List<SalesOrderItem> findByOrderIdOrderByIdAsc(Long orderId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select item from SalesOrderItem item join fetch item.order where item.id = :id")
