@@ -7,6 +7,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.szr.crosserp.inventory.model.InventoryMovementType;
+import com.szr.crosserp.inventory.model.InventoryQualityStatus;
+import com.szr.crosserp.inventory.repository.InventoryLotRepository;
+import com.szr.crosserp.inventory.repository.InventoryMovementRepository;
 import com.szr.crosserp.procurement.model.PurchaseOrder;
 import com.szr.crosserp.procurement.model.PurchaseOrderItem;
 import com.szr.crosserp.procurement.model.PurchaseOrderStatus;
@@ -46,6 +50,8 @@ class ReceivingControllerTest {
     @Autowired PurchaseOrderItemRepository purchaseOrderItemRepository;
     @Autowired DomesticPackageRepository packageRepository;
     @Autowired GoodsReceiptRepository receiptRepository;
+    @Autowired InventoryLotRepository inventoryLotRepository;
+    @Autowired InventoryMovementRepository inventoryMovementRepository;
 
     private User warehouse;
 
@@ -108,10 +114,20 @@ class ReceivingControllerTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.packageStatus").value("RECEIVING"))
             .andExpect(jsonPath("$.purchaseOrderStatus").value("PARTIALLY_RECEIVED"))
-            .andExpect(jsonPath("$.inventoryPosted").value(false));
+            .andExpect(jsonPath("$.inventoryPosted").value(true));
 
         assertThat(purchaseOrderItemRepository.findById(fixture.item().getId()).orElseThrow().getReceivedQuantity())
             .isEqualTo(2);
+        assertThat(inventoryLotRepository.findAll())
+            .singleElement()
+            .satisfies(lot -> {
+                assertThat(lot.getQualityStatus()).isEqualTo(InventoryQualityStatus.ACCEPTED);
+                assertThat(lot.getAvailableQuantity()).isEqualTo(2);
+            });
+        assertThat(inventoryMovementRepository.findAll())
+            .singleElement()
+            .satisfies(movement -> assertThat(movement.getMovementType())
+                .isEqualTo(InventoryMovementType.RECEIPT_ACCEPTED));
     }
 
     @Test
@@ -123,10 +139,16 @@ class ReceivingControllerTest {
                 .content(receiptJson(fixture.item().getId(), 1, 1, "idem-" + fixture.suffix(), "一件破损")))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.packageStatus").value("EXCEPTION"))
-            .andExpect(jsonPath("$.purchaseOrderStatus").value("RECEIVED"));
+            .andExpect(jsonPath("$.purchaseOrderStatus").value("RECEIVED"))
+            .andExpect(jsonPath("$.inventoryPosted").value(true));
 
         assertThat(purchaseOrderItemRepository.findById(fixture.item().getId()).orElseThrow().getReceivedQuantity())
             .isEqualTo(1);
+        assertThat(inventoryLotRepository.findAll()).hasSize(2);
+        assertThat(inventoryLotRepository.findAll())
+            .filteredOn(lot -> lot.getQualityStatus() == InventoryQualityStatus.DAMAGED)
+            .singleElement()
+            .satisfies(lot -> assertThat(lot.getQuarantinedQuantity()).isEqualTo(1));
     }
 
     @Test
@@ -172,7 +194,7 @@ class ReceivingControllerTest {
         mockMvc.perform(get("/api/goods-receipts/{receiptId}", receiptId).with(actor("OPERATIONS")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items[0].acceptedQuantity").value(1))
-            .andExpect(jsonPath("$.inventoryPosted").value(false));
+            .andExpect(jsonPath("$.inventoryPosted").value(true));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.szr.crosserp.receiving.service;
 
 import com.szr.crosserp.common.exception.ApiException;
+import com.szr.crosserp.inventory.service.InventoryPostingService;
 import com.szr.crosserp.procurement.model.PurchaseOrderItem;
 import com.szr.crosserp.procurement.repository.PurchaseOrderItemRepository;
 import com.szr.crosserp.receiving.dto.DomesticPackageDetailResponse;
@@ -49,6 +50,7 @@ public class ReceivingQueryService {
     private final GoodsReceiptItemRepository receiptItemRepository;
     private final UnexpectedReceiptItemRepository unexpectedItemRepository;
     private final ReceivingEventRepository eventRepository;
+    private final InventoryPostingService inventoryPostingService;
 
     public ReceivingQueryService(
         DomesticPackageRepository packageRepository,
@@ -56,7 +58,8 @@ public class ReceivingQueryService {
         GoodsReceiptRepository receiptRepository,
         GoodsReceiptItemRepository receiptItemRepository,
         UnexpectedReceiptItemRepository unexpectedItemRepository,
-        ReceivingEventRepository eventRepository
+        ReceivingEventRepository eventRepository,
+        InventoryPostingService inventoryPostingService
     ) {
         this.packageRepository = packageRepository;
         this.purchaseItemRepository = purchaseItemRepository;
@@ -64,6 +67,7 @@ public class ReceivingQueryService {
         this.receiptItemRepository = receiptItemRepository;
         this.unexpectedItemRepository = unexpectedItemRepository;
         this.eventRepository = eventRepository;
+        this.inventoryPostingService = inventoryPostingService;
     }
 
     public DomesticPackagePageResponse findPackages(DomesticPackageQuery query) {
@@ -114,7 +118,7 @@ public class ReceivingQueryService {
         return new GoodsReceiptDetailResponse(
             receipt.getId(), receipt.getReceiptNo(), receipt.getDomesticPackage().getId(),
             receipt.getDomesticPackage().getPackageNo(), receipt.getOperator().getDisplayName(),
-            receipt.getConfirmedAt(), receipt.getNote(), false, items, unexpected
+            receipt.getConfirmedAt(), receipt.getNote(), inventoryPostingService.isPosted(receipt), items, unexpected
         );
     }
 

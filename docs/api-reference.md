@@ -72,4 +72,14 @@ All authenticated employees can view domestic packages and goods receipts. Only 
 
 The complete receiving contract, quantity semantics, idempotency behavior, and error codes are defined in `receiving-api.md`. The approved module boundary and database design are defined in `receiving-spec.md`.
 
+## Inventory Posting
+
+Confirmed receipts create accepted and damaged inventory lots in the same transaction. Accepted inventory is automatically reserved for sales-order items only through explicit purchase-order allocation sources. Historical receipts created before inventory posting was available can be posted idempotently by an owner, and retries do not duplicate lots, allocations, or movements.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/inventory/receipts/{receiptId}/post` | Idempotently post one historical receipt to inventory; owner only |
+
+The approved inventory boundary and planned APIs are defined in `inventory-spec.md`. Automatic source-based allocation is implemented internally; manual allocation, release, adjustment, inventory query, and frontend APIs are not implemented yet.
+
 Remaining modules will be specified before implementation. The public project exposes only endpoints required by the approved MVP.

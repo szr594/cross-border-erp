@@ -1,6 +1,7 @@
 package com.szr.crosserp.receiving.service;
 
 import com.szr.crosserp.common.exception.ApiException;
+import com.szr.crosserp.inventory.service.InventoryPostingService;
 import com.szr.crosserp.procurement.model.PurchaseOrder;
 import com.szr.crosserp.procurement.model.PurchaseOrderItem;
 import com.szr.crosserp.procurement.model.PurchaseOrderStatus;
@@ -62,6 +63,7 @@ public class ReceivingCommandService {
     private final UnexpectedReceiptItemRepository unexpectedItemRepository;
     private final ReceivingEventRepository eventRepository;
     private final UserRepository userRepository;
+    private final InventoryPostingService inventoryPostingService;
 
     public ReceivingCommandService(
         DomesticPackageRepository packageRepository,
@@ -71,7 +73,8 @@ public class ReceivingCommandService {
         GoodsReceiptItemRepository receiptItemRepository,
         UnexpectedReceiptItemRepository unexpectedItemRepository,
         ReceivingEventRepository eventRepository,
-        UserRepository userRepository
+        UserRepository userRepository,
+        InventoryPostingService inventoryPostingService
     ) {
         this.packageRepository = packageRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
@@ -81,6 +84,7 @@ public class ReceivingCommandService {
         this.unexpectedItemRepository = unexpectedItemRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
+        this.inventoryPostingService = inventoryPostingService;
     }
 
     @Transactional
@@ -179,6 +183,7 @@ public class ReceivingCommandService {
         unexpectedItemRepository.saveAll(unexpectedItems);
         purchaseItemRepository.saveAllAndFlush(lockedItems);
         receiptItemRepository.flush();
+        inventoryPostingService.postReceipt(receipt, receiptItems, actor);
 
         Map<Long, Integer> allDamaged = damagedByItem(orderItemIds);
         boolean anyInspected = false;
@@ -296,7 +301,8 @@ public class ReceivingCommandService {
     private ConfirmGoodsReceiptResponse receiptResponse(GoodsReceipt receipt) {
         return new ConfirmGoodsReceiptResponse(
             receipt.getId(), receipt.getReceiptNo(), receipt.getDomesticPackage().getId(),
-            receipt.getDomesticPackage().getStatus(), receipt.getDomesticPackage().getPurchaseOrder().getStatus(), false
+            receipt.getDomesticPackage().getStatus(), receipt.getDomesticPackage().getPurchaseOrder().getStatus(),
+            inventoryPostingService.isPosted(receipt)
         );
     }
 
