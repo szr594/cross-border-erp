@@ -10,3 +10,7 @@ frontend/*.tsbuildinfo
 .pnpm-store/
 
 uploads/
+
+# Local generated artifacts
+output/
+tmp/
