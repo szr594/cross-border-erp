@@ -86,7 +86,13 @@ All authenticated employees can query inventory lots, movements, allocations, an
 | GET | `/api/inventory/allocations` | Page allocations by order number, lot number, and status |
 | GET | `/api/orders/{orderId}/inventory-allocations` | Return item-level required, reserved, consumed, and shortage quantities |
 | POST | `/api/inventory/receipts/{receiptId}/post` | Idempotently post one historical receipt to inventory; owner only |
+| POST | `/api/inventory/lots/{lotId}/allocate` | Manually reserve inventory against a matching purchase source; owner or warehouse only |
+| POST | `/api/inventory/allocations/{allocationId}/release` | Release a reserved allocation; owner or warehouse only |
+| POST | `/api/inventory/lots/{lotId}/adjustments` | Adjust available inventory in or out; owner or warehouse only |
+| POST | `/api/inventory/lots/{lotId}/release-quarantine` | Move quarantined quantity into usable inventory; owner or warehouse only |
 
-The approved inventory boundary and remaining planned APIs are defined in `inventory-spec.md`. Automatic source-based allocation and the read-only query layer are implemented; manual allocation, release, adjustment, quarantine release, and frontend pages are not implemented yet.
+Inventory commands require a non-empty reason, an idempotency key, and the current entity version. Reusing a key for the same command returns the prior result; reusing it for different command data returns `INVENTORY_IDEMPOTENCY_CONFLICT`. Inventory movements are append-only. Manual allocation cannot exceed the lot's available balance, the matching purchase source remainder, or the sales-order item shortage. Adjustment-out never consumes reserved inventory. Quarantine release preserves the lot's `DAMAGED` source marker while making the released quantity available.
+
+The approved inventory boundary and remaining planned APIs are defined in `inventory-spec.md`. Automatic and manual source-based allocation, the command service, and the read-only query layer are implemented; frontend inventory pages are not implemented yet.
 
 Remaining modules will be specified before implementation. The public project exposes only endpoints required by the approved MVP.

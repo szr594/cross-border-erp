@@ -7,6 +7,12 @@ import com.szr.crosserp.inventory.repository.InventoryAllocationRepository;
 import com.szr.crosserp.inventory.repository.InventoryMovementRepository;
 import com.szr.crosserp.inventory.model.InventoryQualityStatus;
 import com.szr.crosserp.inventory.service.InventoryPostingCommandService;
+import com.szr.crosserp.inventory.service.InventoryCommandService;
+import com.szr.crosserp.inventory.dto.AdjustInventoryRequest;
+import com.szr.crosserp.inventory.dto.InventoryAdjustmentType;
+import com.szr.crosserp.inventory.dto.ManualInventoryAllocationRequest;
+import com.szr.crosserp.common.exception.ApiException;
+import com.szr.crosserp.inventory.model.InventoryLot;
 import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.model.OrderProcurementRequest;
 import com.szr.crosserp.order.model.SalesOrder;
@@ -50,6 +56,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("mysql-integration")
 class MySqlInventoryPostingIT {
     @Autowired InventoryPostingCommandService commandService;
+    @Autowired InventoryCommandService inventoryCommandService;
     @Autowired UserRepository userRepository;
     @Autowired SupplierRepository supplierRepository;
     @Autowired PurchaseOrderRepository purchaseOrderRepository;
@@ -171,6 +178,195 @@ class MySqlInventoryPostingIT {
             .satisfies(allocation -> assertThat(lotRepository.findById(
                 allocation.getInventoryLot().getId()
             ).orElseThrow().getReservedQuantity()).isEqualTo(2));
+    }
+
+    @Test
+    void mysqlConcurrentAdjustmentDoesNotReduceBelowAvailableQuantity() throws Exception {
+        AdjustmentFixture fixture = adjustmentFixture(3);
+        AdjustInventoryRequest firstRequest = new AdjustInventoryRequest(
+            InventoryAdjustmentType.OUT, 2, "并发调减", "MYSQL-ADJ-A-" + fixture.suffix(), 0L
+        );
+        AdjustInventoryRequest secondRequest = new AdjustInventoryRequest(
+            InventoryAdjustmentType.OUT, 2, "并发调减", "MYSQL-ADJ-B-" + fixture.suffix(), 0L
+        );
+
+        var results = runConcurrently(
+            () -> inventoryCommandService.adjust(
+                fixture.lotId(), firstRequest, fixture.ownerId().toString(), List.of("WAREHOUSE")
+            ),
+            () -> inventoryCommandService.adjust(
+                fixture.lotId(), secondRequest, fixture.ownerId().toString(), List.of("WAREHOUSE")
+            )
+        );
+
+        assertThat(results.stream().filter(result -> result == null).count()).isEqualTo(1);
+        assertThat(results.stream().filter(ApiException.class::isInstance).count()).isEqualTo(1);
+        assertThat(lotRepository.findById(fixture.lotId()).orElseThrow().getAvailableQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    void mysqlConcurrentSameIdempotencyKeyCreatesOneMovement() throws Exception {
+        AdjustmentFixture fixture = adjustmentFixture(3);
+        String key = "MYSQL-IDEMP-" + fixture.suffix();
+        AdjustInventoryRequest request = new AdjustInventoryRequest(
+            InventoryAdjustmentType.OUT, 1, "幂等调减", key, 0L
+        );
+
+        var results = runConcurrently(
+            () -> inventoryCommandService.adjust(
+                fixture.lotId(), request, fixture.ownerId().toString(), List.of("OWNER")
+            ),
+            () -> inventoryCommandService.adjust(
+                fixture.lotId(), request, fixture.ownerId().toString(), List.of("OWNER")
+            )
+        );
+
+        assertThat(results).containsOnlyNulls();
+        assertThat(movementRepository.findByIdempotencyKey(key)).isPresent();
+        assertThat(movementRepository.findByInventoryLotIdOrderByOccurredAtDescIdDesc(fixture.lotId()))
+            .filteredOn(movement -> movement.getIdempotencyKey().equals(key))
+            .hasSize(1);
+        assertThat(lotRepository.findById(fixture.lotId()).orElseThrow().getAvailableQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    void mysqlConcurrentManualAllocationDoesNotExceedOrderShortage() throws Exception {
+        ManualAllocationFixture fixture = manualAllocationFixture();
+        ManualInventoryAllocationRequest firstRequest = new ManualInventoryAllocationRequest(
+            fixture.orderItemId(), 2, "并发手工分配", "MYSQL-MANUAL-A-" + fixture.suffix(), 0L
+        );
+        ManualInventoryAllocationRequest secondRequest = new ManualInventoryAllocationRequest(
+            fixture.orderItemId(), 2, "并发手工分配", "MYSQL-MANUAL-B-" + fixture.suffix(), 0L
+        );
+
+        var results = runConcurrently(
+            () -> inventoryCommandService.allocate(
+                fixture.lotId(), firstRequest, fixture.ownerId().toString(), List.of("WAREHOUSE")
+            ),
+            () -> inventoryCommandService.allocate(
+                fixture.lotId(), secondRequest, fixture.ownerId().toString(), List.of("WAREHOUSE")
+            )
+        );
+
+        assertThat(results.stream().filter(result -> result == null).count()).isEqualTo(1);
+        assertThat(results.stream().filter(ApiException.class::isInstance).count()).isEqualTo(1);
+        assertThat(allocationRepository.sumActiveQuantityBySalesOrderItemId(fixture.orderItemId()))
+            .isEqualTo(2);
+        assertThat(lotRepository.findById(fixture.lotId()).orElseThrow().getReservedQuantity()).isEqualTo(2);
+    }
+
+    private ManualAllocationFixture manualAllocationFixture() {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        User owner = userRepository.save(new User(
+            "mysql-manual-" + suffix, "MySQL手工分配", "not-used-in-this-test", false
+        ));
+        SalesChannel channel = salesChannelRepository.save(new SalesChannel(
+            "MYSQL-MANUAL-CH-" + suffix, "MySQL手工渠道"
+        ));
+        SalesStore store = salesStoreRepository.save(new SalesStore(
+            channel, "MYSQL-MANUAL-STORE-EXT-" + suffix,
+            "MYSQL-MANUAL-STORE-" + suffix, "MySQL手工店铺"
+        ));
+        SalesOrder salesOrder = salesOrderRepository.save(new SalesOrder(
+            "MYSQL-MANUAL-SO-" + suffix, store,
+            "MYSQL-MANUAL-ORDER-EXT-" + suffix, ExternalOrderStatus.PROCESSING
+        ));
+        SalesOrderItem orderItem = salesOrderItemRepository.save(new SalesOrderItem(
+            salesOrder, "MYSQL-MANUAL-ITEM-" + suffix, "MySQL手工商品", 2
+        ));
+        OrderProcurementRequest procurementRequest = procurementRequestRepository.save(
+            new OrderProcurementRequest(orderItem, 2, owner, Instant.now())
+        );
+        procurementRequest.convert();
+        procurementRequestRepository.save(procurementRequest);
+        Supplier supplier = supplierRepository.save(new Supplier(
+            "MYSQL-MANUAL-SUP-" + suffix, "MySQL手工供应商", SupplierPlatform.MANUAL
+        ));
+        PurchaseOrder purchaseOrder = purchaseOrderRepository.save(new PurchaseOrder(
+            "MYSQL-MANUAL-PO-" + suffix, supplier, "CNY", owner
+        ));
+        PurchaseOrderItem purchaseOrderItem = purchaseOrderItemRepository.save(new PurchaseOrderItem(
+            purchaseOrder, "MySQL手工商品", 4, "CNY"
+        ));
+        purchaseOrderAllocationRepository.save(new PurchaseOrderAllocation(
+            purchaseOrderItem, procurementRequest, 2
+        ));
+        GoodsReceipt receipt = createReceipt(suffix, purchaseOrder, purchaseOrderItem, owner, 4);
+        GoodsReceiptItem receiptItem = receiptItemRepository
+            .findByGoodsReceiptIdOrderByIdAsc(receipt.getId()).get(0);
+        InventoryLot lot = lotRepository.saveAndFlush(new InventoryLot(
+            "MYSQL-MANUAL-LOT-" + suffix, receiptItem, purchaseOrderItem,
+            InventoryQualityStatus.ACCEPTED, 4, Instant.now()
+        ));
+        return new ManualAllocationFixture(suffix, owner.getId(), orderItem.getId(), lot.getId());
+    }
+
+    private AdjustmentFixture adjustmentFixture(int quantity) {
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        User owner = userRepository.save(new User(
+            "mysql-command-" + suffix, "MySQL库存命令", "not-used-in-this-test", false
+        ));
+        Supplier supplier = supplierRepository.save(new Supplier(
+            "MYSQL-CMD-" + suffix, "MySQL命令供应商", SupplierPlatform.MANUAL
+        ));
+        PurchaseOrder purchaseOrder = purchaseOrderRepository.save(new PurchaseOrder(
+            "MYSQL-PO-CMD-" + suffix, supplier, "CNY", owner
+        ));
+        PurchaseOrderItem purchaseOrderItem = purchaseOrderItemRepository.save(new PurchaseOrderItem(
+            purchaseOrder, "MySQL命令商品", quantity, "CNY"
+        ));
+        GoodsReceipt receipt = createReceipt(suffix, purchaseOrder, purchaseOrderItem, owner, quantity);
+        commandService.postHistoricalReceipt(receipt.getId(), owner.getId().toString(), List.of("OWNER"));
+        Long receiptItemId = receiptItemRepository.findByGoodsReceiptIdOrderByIdAsc(receipt.getId())
+            .get(0).getId();
+        Long lotId = lotRepository.findByGoodsReceiptItemIdAndQualityStatus(
+            receiptItemId, InventoryQualityStatus.ACCEPTED
+        ).orElseThrow().getId();
+        return new AdjustmentFixture(suffix, owner.getId(), lotId);
+    }
+
+    private List<Throwable> runConcurrently(ConcurrentCommand firstCommand, ConcurrentCommand secondCommand)
+        throws Exception {
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> runCommand(firstCommand, ready, start));
+            var second = executor.submit(() -> runCommand(secondCommand, ready, start));
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            return java.util.Arrays.asList(
+                first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)
+            );
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private Throwable runCommand(
+        ConcurrentCommand command, CountDownLatch ready, CountDownLatch start
+    ) throws InterruptedException {
+        ready.countDown();
+        start.await();
+        try {
+            command.run();
+            return null;
+        } catch (Throwable throwable) {
+            return throwable;
+        }
+    }
+
+    @FunctionalInterface
+    private interface ConcurrentCommand {
+        void run();
+    }
+
+    private record AdjustmentFixture(String suffix, Long ownerId, Long lotId) {
+    }
+
+    private record ManualAllocationFixture(
+        String suffix, Long ownerId, Long orderItemId, Long lotId
+    ) {
     }
 
     private GoodsReceipt createReceipt(

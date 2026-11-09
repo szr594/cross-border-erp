@@ -78,7 +78,7 @@ class InventorySchemaMigrationTest {
 
     @Test
     void flywayAppliesVersionFiveAndCreatesInventoryTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
 
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();

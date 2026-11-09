@@ -99,4 +99,14 @@ public class InventoryAllocation {
     public Instant getReleasedAt() { return releasedAt; }
     public String getReleaseReason() { return releaseReason; }
     public long getVersion() { return version; }
+
+    public void release(User actor, Instant releasedAt, String reason) {
+        if (status != InventoryAllocationStatus.RESERVED) {
+            throw new IllegalStateException("Only reserved allocation can be released");
+        }
+        status = InventoryAllocationStatus.RELEASED;
+        releasedBy = actor;
+        this.releasedAt = releasedAt;
+        releaseReason = reason;
+    }
 }

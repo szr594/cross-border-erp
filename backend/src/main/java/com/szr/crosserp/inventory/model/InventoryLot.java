@@ -118,15 +118,64 @@ public class InventoryLot {
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void reserve(int quantity) {
-        if (qualityStatus != InventoryQualityStatus.ACCEPTED) {
-            throw new IllegalStateException("Only accepted inventory can be reserved");
-        }
         if (quantity <= 0 || quantity > availableQuantity) {
             throw new IllegalArgumentException("Reservation quantity exceeds available inventory");
         }
         availableQuantity -= quantity;
         reservedQuantity += quantity;
-        status = availableQuantity == 0 ? InventoryLotStatus.ALLOCATED : InventoryLotStatus.AVAILABLE;
+        refreshStatus();
+    }
+
+    public void releaseReservation(int quantity) {
+        if (quantity <= 0 || quantity > reservedQuantity) {
+            throw new IllegalArgumentException("Release quantity exceeds reserved inventory");
+        }
+        reservedQuantity -= quantity;
+        availableQuantity += quantity;
+        refreshStatus();
+    }
+
+    public void adjustIn(int quantity) {
+        requirePositive(quantity);
+        initialQuantity += quantity;
+        availableQuantity += quantity;
+        refreshStatus();
+    }
+
+    public void adjustOut(int quantity) {
+        if (quantity <= 0 || quantity > availableQuantity) {
+            throw new IllegalArgumentException("Adjustment quantity exceeds available inventory");
+        }
+        availableQuantity -= quantity;
+        adjustedOutQuantity += quantity;
+        refreshStatus();
+    }
+
+    public void releaseQuarantine(int quantity) {
+        if (quantity <= 0 || quantity > quarantinedQuantity) {
+            throw new IllegalArgumentException("Release quantity exceeds quarantined inventory");
+        }
+        quarantinedQuantity -= quantity;
+        availableQuantity += quantity;
+        refreshStatus();
+    }
+
+    private void refreshStatus() {
+        if (availableQuantity > 0) {
+            status = InventoryLotStatus.AVAILABLE;
+        } else if (reservedQuantity > 0) {
+            status = InventoryLotStatus.ALLOCATED;
+        } else if (quarantinedQuantity > 0) {
+            status = InventoryLotStatus.QUARANTINED;
+        } else {
+            status = InventoryLotStatus.DEPLETED;
+        }
+    }
+
+    private void requirePositive(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
     }
 
     @PrePersist
