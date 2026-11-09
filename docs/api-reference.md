@@ -25,7 +25,7 @@ Authentication details and error behavior are defined in `auth-spec.md`.
 | POST | `/api/orders/{orderId}/procurement-requests/{requestId}/withdraw` | Withdraw an unconverted request |
 | POST | `/api/orders/{orderId}/exceptions` | Open an order exception |
 | POST | `/api/orders/{orderId}/exceptions/resolve` | Resolve the current order exception |
-| POST | `/api/orders/{orderId}/cancel` | Cancel an order; owner only |
+| POST | `/api/orders/{orderId}/cancel` | Cancel an order and release reserved inventory; owner only; consumed inventory blocks cancellation |
 | POST | `/api/order-imports/preview` | Validate a CSV order import without writing business data |
 | POST | `/api/order-imports/{importId}/confirm` | Confirm a validated CSV import; owner only |
 | GET | `/api/order-imports/{importId}` | Return import status and counts |

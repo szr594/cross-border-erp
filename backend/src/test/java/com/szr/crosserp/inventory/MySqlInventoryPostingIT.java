@@ -17,6 +17,8 @@ import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.model.OrderProcurementRequest;
 import com.szr.crosserp.order.model.SalesOrder;
 import com.szr.crosserp.order.model.SalesOrderItem;
+import com.szr.crosserp.order.dto.ReasonVersionRequest;
+import com.szr.crosserp.order.service.OrderCommandService;
 import com.szr.crosserp.order.repository.OrderProcurementRequestRepository;
 import com.szr.crosserp.order.repository.SalesOrderItemRepository;
 import com.szr.crosserp.order.repository.SalesOrderRepository;
@@ -57,6 +59,7 @@ import org.springframework.test.context.ActiveProfiles;
 class MySqlInventoryPostingIT {
     @Autowired InventoryPostingCommandService commandService;
     @Autowired InventoryCommandService inventoryCommandService;
+    @Autowired OrderCommandService orderCommandService;
     @Autowired UserRepository userRepository;
     @Autowired SupplierRepository supplierRepository;
     @Autowired PurchaseOrderRepository purchaseOrderRepository;
@@ -255,6 +258,36 @@ class MySqlInventoryPostingIT {
         assertThat(lotRepository.findById(fixture.lotId()).orElseThrow().getReservedQuantity()).isEqualTo(2);
     }
 
+    @Test
+    void mysqlOrderCancellationReleasesReservedInventoryAtomically() {
+        ManualAllocationFixture fixture = manualAllocationFixture();
+        inventoryCommandService.allocate(
+            fixture.lotId(),
+            new ManualInventoryAllocationRequest(
+                fixture.orderItemId(), 2, "取消前预留",
+                "MYSQL-CANCEL-ALLOC-" + fixture.suffix(), 0L
+            ),
+            fixture.ownerId().toString(), List.of("WAREHOUSE")
+        );
+
+        orderCommandService.cancel(
+            fixture.orderId(), new ReasonVersionRequest("外部订单取消", 0L),
+            fixture.ownerId().toString(), List.of("OWNER")
+        );
+
+        assertThat(allocationRepository.sumActiveQuantityBySalesOrderItemId(fixture.orderItemId()))
+            .isZero();
+        assertThat(lotRepository.findById(fixture.lotId()).orElseThrow())
+            .satisfies(lot -> {
+                assertThat(lot.getAvailableQuantity()).isEqualTo(4);
+                assertThat(lot.getReservedQuantity()).isZero();
+            });
+        assertThat(allocationRepository.findBySalesOrderItemIdOrderByIdAsc(fixture.orderItemId()))
+            .singleElement()
+            .satisfies(allocation -> assertThat(allocation.getStatus())
+                .isEqualTo(com.szr.crosserp.inventory.model.InventoryAllocationStatus.RELEASED));
+    }
+
     private ManualAllocationFixture manualAllocationFixture() {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         User owner = userRepository.save(new User(
@@ -298,7 +331,9 @@ class MySqlInventoryPostingIT {
             "MYSQL-MANUAL-LOT-" + suffix, receiptItem, purchaseOrderItem,
             InventoryQualityStatus.ACCEPTED, 4, Instant.now()
         ));
-        return new ManualAllocationFixture(suffix, owner.getId(), orderItem.getId(), lot.getId());
+        return new ManualAllocationFixture(
+            suffix, owner.getId(), salesOrder.getId(), orderItem.getId(), lot.getId()
+        );
     }
 
     private AdjustmentFixture adjustmentFixture(int quantity) {
@@ -365,7 +400,7 @@ class MySqlInventoryPostingIT {
     }
 
     private record ManualAllocationFixture(
-        String suffix, Long ownerId, Long orderItemId, Long lotId
+        String suffix, Long ownerId, Long orderId, Long orderItemId, Long lotId
     ) {
     }
 

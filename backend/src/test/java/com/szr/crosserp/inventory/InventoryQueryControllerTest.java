@@ -146,6 +146,7 @@ class InventoryQueryControllerTest {
             .andExpect(jsonPath("$.receiptSource.receiptNo").value(receipt.getReceiptNo()))
             .andExpect(jsonPath("$.purchaseSource.supplierName").value("库存查询供应商"))
             .andExpect(jsonPath("$.allocations[0].orderNo").value(order.getOrderNo()))
+            .andExpect(jsonPath("$.allocations[0].version").isNumber())
             .andExpect(content().string(not(containsString("recipientPhone"))))
             .andExpect(content().string(not(containsString("addressLine"))))
             .andExpect(content().string(not(containsString("customerName"))));

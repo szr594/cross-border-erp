@@ -7,6 +7,6 @@ public record InventoryAllocationResponse(
     Long id, String allocationNo, Long lotId, String lotNo,
     Long salesOrderId, String orderNo, Long salesOrderItemId,
     String productName, String variantName, int quantity,
-    InventoryAllocationStatus status, Instant allocatedAt
+    InventoryAllocationStatus status, long version, Instant allocatedAt
 ) {
 }

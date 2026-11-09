@@ -1,6 +1,7 @@
 package com.szr.crosserp.order.service;
 
 import com.szr.crosserp.common.exception.ApiException;
+import com.szr.crosserp.inventory.service.InventoryOrderCancellationService;
 import com.szr.crosserp.order.dto.ChangeResponsibleUserRequest;
 import com.szr.crosserp.order.dto.CreateProcurementRequestsRequest;
 import com.szr.crosserp.order.dto.OrderCommandResponse;
@@ -45,19 +46,22 @@ public class OrderCommandService {
     private final OrderProcurementRequestRepository requestRepository;
     private final OrderStatusEventRepository eventRepository;
     private final UserRepository userRepository;
+    private final InventoryOrderCancellationService inventoryCancellationService;
 
     public OrderCommandService(
         SalesOrderRepository orderRepository,
         SalesOrderItemRepository itemRepository,
         OrderProcurementRequestRepository requestRepository,
         OrderStatusEventRepository eventRepository,
-        UserRepository userRepository
+        UserRepository userRepository,
+        InventoryOrderCancellationService inventoryCancellationService
     ) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
         this.requestRepository = requestRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
+        this.inventoryCancellationService = inventoryCancellationService;
     }
 
     @Transactional
@@ -202,10 +206,10 @@ public class OrderCommandService {
         List<SalesOrderItem> items = itemRepository.findByOrderIdInOrderByIdAsc(List.of(orderId));
         List<Long> itemIds = items.stream().map(SalesOrderItem::getId).toList();
         List<OrderProcurementRequest> requests = itemIds.isEmpty() ? List.of() : requestRepository.findByOrderItemIdIn(itemIds);
-        if (requests.stream().anyMatch(request -> request.getStatus() == ProcurementRequestStatus.CONVERTED)) {
-            throw conflict("ORDER_CANCEL_BLOCKED", "订单已有采购转单，不能取消");
-        }
         Instant now = Instant.now();
+        inventoryCancellationService.releaseReservedForOrder(
+            orderId, itemIds, actor, command.reason(), now
+        );
         requests.stream()
             .filter(request -> request.getStatus() == ProcurementRequestStatus.REQUESTED)
             .forEach(request -> request.withdraw(actor, now, command.reason()));

@@ -14,7 +14,9 @@ A portfolio-oriented cross-border order fulfillment ERP rebuilt with Java and Vu
 
 ## Current stage
 
-The repository includes the application skeleton, JWT authentication, the order-domain data layer, order query and command APIs, development demonstration orders, and a Vue order workbench with role-aware order operations. CSV import remains deferred to a later approved phase.
+The repository includes JWT authentication and working order, procurement, receiving, and inventory backends with development demonstration data. Inventory supports traceable lots, automatic and manual allocation, release, adjustment, quarantine release, and automatic reservation release when an order is canceled. Vue workbenches are available for orders, procurement, and receiving; the inventory workbench and CSV order import remain deferred to later phases.
+
+With the `dev` profile and `DEMO_OWNER_PASSWORD` configured, startup creates fictional orders, purchase orders, two receiving batches, accepted and damaged inventory lots, reserved and released allocations, and immutable inventory movements. Repeated startup does not duplicate these demo records.
 
 ## Development
 

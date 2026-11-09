@@ -175,7 +175,7 @@ class OrderCommandControllerTest {
     }
 
     @Test
-    void onlyOwnerCancelsAndConvertedProcurementBlocksCancellation() throws Exception {
+    void onlyOwnerCancelsAndConvertedProcurementIsPreserved() throws Exception {
         mockMvc.perform(post("/api/orders/{orderId}/cancel", orderId)
                 .with(actor(operations, "OPERATIONS"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -187,8 +187,14 @@ class OrderCommandControllerTest {
                 .with(actor(owner, "OWNER"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"reason\":\"外部订单取消\",\"version\":0}"))
-            .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.code").value("ORDER_CANCEL_BLOCKED"));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.externalStatus").value("CANCELED"));
+
+        String requestStatus = jdbcTemplate.queryForObject(
+            "SELECT status FROM order_procurement_requests WHERE order_item_id = ?",
+            String.class, firstItemId
+        );
+        org.assertj.core.api.Assertions.assertThat(requestStatus).isEqualTo("CONVERTED");
     }
 
     @Test

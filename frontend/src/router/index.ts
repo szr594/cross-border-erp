@@ -36,7 +36,7 @@ const router = createRouter({
         { path: 'procurement', name: 'procurement', component: ProcurementView, meta: { title: '采购管理' } },
         { path: 'procurement/:purchaseOrderId', name: 'purchase-order-detail', component: PurchaseOrderDetailView, meta: { title: '采购单详情' } },
         { path: 'inventory', name: 'inventory', component: InventoryListView, meta: { title: '库存管理' } },
-        { path: 'inventory/:skuId', name: 'inventory-detail', component: InventoryDetailView, meta: { title: '库存详情' } },
+        { path: 'inventory/:lotId', name: 'inventory-detail', component: InventoryDetailView, meta: { title: '库存批次详情' } },
         { path: 'receiving', name: 'receiving', component: ReceivingView, meta: { title: '到货收货' } },
         { path: 'receiving/packages/:packageId', name: 'receiving-package-detail', component: ReceivingPackageDetailView, meta: { title: '包裹详情' } },
         { path: 'receiving/receipts/:receiptId', name: 'goods-receipt-detail', component: GoodsReceiptDetailView, meta: { title: '收货批次' } },

@@ -198,7 +198,7 @@ public class InventoryQueryService {
             allocation.getId(), allocation.getAllocationNo(), allocation.getInventoryLot().getId(),
             allocation.getInventoryLot().getLotNo(), item.getOrder().getId(), item.getOrder().getOrderNo(),
             item.getId(), item.getProductName(), item.getVariantName(), allocation.getQuantity(),
-            allocation.getStatus(), allocation.getAllocatedAt()
+            allocation.getStatus(), allocation.getVersion(), allocation.getAllocatedAt()
         );
     }
 

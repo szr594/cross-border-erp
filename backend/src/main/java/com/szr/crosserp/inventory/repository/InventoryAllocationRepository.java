@@ -64,6 +64,18 @@ public interface InventoryAllocationRepository extends JpaRepository<InventoryAl
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select allocation from InventoryAllocation allocation
+        where allocation.salesOrderItem.id in :salesOrderItemIds
+          and allocation.status in :statuses
+        order by allocation.inventoryLot.id, allocation.id
+        """)
+    List<InventoryAllocation> findBySalesOrderItemIdsAndStatusesForUpdate(
+        @Param("salesOrderItemIds") List<Long> salesOrderItemIds,
+        @Param("statuses") List<InventoryAllocationStatus> statuses
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select allocation from InventoryAllocation allocation where allocation.id = :id")
     Optional<InventoryAllocation> findByIdForUpdate(@Param("id") Long id);
 }
