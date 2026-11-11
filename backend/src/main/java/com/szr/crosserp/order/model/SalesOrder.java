@@ -130,6 +130,38 @@ public class SalesOrder {
         this.externalStatus = externalStatus;
     }
 
+    public static SalesOrder imported(
+        String orderNo, SalesStore store, String externalOrderId, String displayOrderNo,
+        ExternalOrderStatus status, String rawStatus, User responsibleUser, String currency,
+        Instant orderedAt, Instant requestedShipAt, String customerId, String customerName,
+        String recipientName, String recipientPhone, String countryCode, String province,
+        String city, String district, String addressLine1, String addressLine2, String postalCode,
+        String note, Instant now
+    ) {
+        SalesOrder order = new SalesOrder(orderNo, store, externalOrderId, status);
+        order.displayOrderNo = displayOrderNo;
+        order.externalStatusRaw = rawStatus;
+        order.responsibleUser = responsibleUser;
+        order.currency = currency;
+        order.orderedAt = orderedAt;
+        order.requestedShipAt = requestedShipAt;
+        order.customerId = customerId;
+        order.customerName = customerName;
+        order.recipientName = recipientName;
+        order.recipientPhone = recipientPhone;
+        order.countryCode = countryCode;
+        order.province = province;
+        order.city = city;
+        order.district = district;
+        order.addressLine1 = addressLine1;
+        order.addressLine2 = addressLine2;
+        order.postalCode = postalCode;
+        order.note = note;
+        order.createdAt = now;
+        order.updatedAt = now;
+        return order;
+    }
+
     public Long getId() { return id; }
     public String getOrderNo() { return orderNo; }
     public SalesStore getStore() { return store; }

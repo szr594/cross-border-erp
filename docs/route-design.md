@@ -6,7 +6,7 @@
 | `/` | Redirect to orders | Authenticated |
 | `/orders` | Order workspace | All authenticated roles |
 | `/orders/:orderId` | Order detail | All authenticated roles; fields are role-filtered by API |
-| `/orders/imports` | CSV order import | Owner only; implemented after list/detail |
+| `/orders/imports` | CSV order import | Owner only |
 | `/procurement` | Procurement workspace | Authenticated |
 | `/inventory` | Inventory list | Authenticated |
 | `/inventory/:skuId` | Inventory detail | Authenticated |

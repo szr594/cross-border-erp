@@ -7,6 +7,7 @@ const InventoryDetailView = () => import('@/views/inventory/InventoryDetailView.
 const InventoryListView = () => import('@/views/inventory/InventoryListView.vue')
 const LoginView = () => import('@/views/auth/LoginView.vue')
 const OrderDetailView = () => import('@/views/orders/OrderDetailView.vue')
+const OrderImportView = () => import('@/views/orders/OrderImportView.vue')
 const OrderListView = () => import('@/views/orders/OrderListView.vue')
 const PackingDetailView = () => import('@/views/packing/PackingDetailView.vue')
 const PackingView = () => import('@/views/packing/PackingView.vue')
@@ -32,6 +33,7 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/orders' },
         { path: 'orders', name: 'orders', component: OrderListView, meta: { title: '订单工作台' } },
+        { path: 'orders/imports', name: 'order-imports', component: OrderImportView, meta: { title: 'CSV 订单导入', roles: ['OWNER'] } },
         { path: 'orders/:orderId', name: 'order-detail', component: OrderDetailView, meta: { title: '订单详情' } },
         { path: 'procurement', name: 'procurement', component: ProcurementView, meta: { title: '采购管理' } },
         { path: 'procurement/:purchaseOrderId', name: 'purchase-order-detail', component: PurchaseOrderDetailView, meta: { title: '采购单详情' } },
@@ -61,6 +63,10 @@ router.beforeEach(async (to) => {
   const user = await ensureAuthenticated()
   if (!user) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  const requiredRoles = Array.isArray(to.meta.roles) ? to.meta.roles as string[] : []
+  if (requiredRoles.length > 0 && !requiredRoles.some(role => user.roles.includes(role))) {
+    return '/orders'
   }
   return true
 })

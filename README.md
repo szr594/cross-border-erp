@@ -14,7 +14,7 @@ A portfolio-oriented cross-border order fulfillment ERP rebuilt with Java and Vu
 
 ## Current stage
 
-The repository includes JWT authentication and working order, procurement, receiving, inventory, and packing modules with development demonstration data. Inventory supports traceable lots, automatic and manual allocation, release, adjustment, quarantine release, and automatic reservation release when an order is canceled. Packing supports ready-order discovery, multi-box item allocation, immutable completion, and atomic consumption of reserved inventory. Vue workbenches are available for orders, procurement, receiving, inventory, and packing. CSV order import remains deferred to the next phase.
+The repository includes JWT authentication and a complete MVP flow across order CSV import, order operations, procurement, receiving, inventory, and packing. Inventory supports traceable lots, automatic and manual allocation, release, adjustment, quarantine release, and automatic reservation release when an order is canceled. Packing supports ready-order discovery, multi-box item allocation, immutable completion, and atomic consumption of reserved inventory. The owner-only CSV workspace validates the project template before atomically creating orders and reports safe row-level errors without retaining the original file.
 
 With the `dev` profile and `DEMO_OWNER_PASSWORD` configured, startup creates fictional orders, purchase orders, two receiving batches, accepted and damaged inventory lots, reserved and released allocations, a fully reserved order ready for packing, and immutable inventory movements. Repeated startup does not duplicate these demo records.
 
@@ -63,6 +63,6 @@ pnpm type-check
 pnpm build
 ```
 
-The inventory workbench, lot detail, filtering, traceability links, role-aware commands, order inventory coverage, and packing workbench are covered by frontend type checks and production builds. Browser acceptance is repeated after each end-to-end module milestone.
+The order import, inventory, and packing workflows are covered by backend integration tests, frontend type checks, and production builds. Browser acceptance is repeated after each end-to-end module milestone.
 
 See `docs/mvp-spec.md`, `docs/architecture.md`, and `docs/route-design.md` before implementing a business module.

@@ -85,6 +85,25 @@ public class SalesOrderItem {
         this.quantity = quantity;
     }
 
+    public static SalesOrderItem imported(
+        SalesOrder order, String externalItemId, String externalProductId, String externalVariantId,
+        String externalSku, String productName, String variantName, String imageUrl, int quantity,
+        Long unitPriceMinor, String currency, String note, Instant now
+    ) {
+        SalesOrderItem item = new SalesOrderItem(order, externalItemId, productName, quantity);
+        item.externalProductId = externalProductId;
+        item.externalVariantId = externalVariantId;
+        item.externalSku = externalSku;
+        item.variantName = variantName;
+        item.imageUrl = imageUrl;
+        item.unitPriceMinor = unitPriceMinor;
+        item.currency = currency;
+        item.note = note;
+        item.createdAt = now;
+        item.updatedAt = now;
+        return item;
+    }
+
     public Long getId() { return id; }
     public SalesOrder getOrder() { return order; }
     public String getExternalItemId() { return externalItemId; }

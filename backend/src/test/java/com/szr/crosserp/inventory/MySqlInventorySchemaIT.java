@@ -27,7 +27,7 @@ class MySqlInventorySchemaIT {
 
     @Test
     void mysqlAppliesVersionFiveAndExposesInventoryTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
 
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();

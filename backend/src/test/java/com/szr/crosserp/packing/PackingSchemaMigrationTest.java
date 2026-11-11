@@ -25,7 +25,7 @@ class PackingSchemaMigrationTest {
 
     @Test
     void flywayAppliesVersionSevenAndCreatesPackingTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();
              ResultSet result = connection.getMetaData().getTables(null, null, "%", new String[] {"TABLE"})) {

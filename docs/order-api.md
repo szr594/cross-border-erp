@@ -164,11 +164,11 @@ ready
 
 ### `POST /api/order-imports/preview`
 
-仅老板。上传 CSV 后解析、校验并返回预检结果，不写业务表。
+仅老板。以 multipart 字段 `file` 上传 CSV 后解析、校验并返回预检结果，不写订单业务表。限制为 UTF-8、5 MB 和 10000 行，详细模板见 `order-import-spec.md`。
 
 ### `POST /api/order-imports/{importId}/confirm`
 
-仅老板。确认预检批次并执行事务化导入。
+仅老板。确认24小时内、零错误的预检批次并执行整批事务化导入。重复确认已完成批次不会重复创建订单。
 
 ### `GET /api/order-imports/{importId}`
 
@@ -178,7 +178,7 @@ ready
 
 分页返回行号、字段、错误码和安全错误描述。不得回显密码、令牌或超出模板的原始文件内容。
 
-模板为 `order-spec.md` 中的“建议模板 v1”，实现前仍需最终确认列名和示例。
+模板 v1、必填列、重复订单策略和错误码已经在 `order-import-spec.md` 中确认并实现。
 
 ## 状态码
 

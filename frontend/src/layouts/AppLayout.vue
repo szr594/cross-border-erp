@@ -3,6 +3,7 @@ import {
   Box,
   Goods,
   List,
+  UploadFilled,
   ShoppingCart,
   Suitcase,
   TakeawayBox,
@@ -39,6 +40,7 @@ async function signOut() {
 
       <el-menu :default-active="route.path" class="app-menu" @select="navigate">
         <el-menu-item index="/orders"><el-icon><List /></el-icon><span>订单工作台</span></el-menu-item>
+        <el-menu-item v-if="authState.user?.roles.includes('OWNER')" index="/orders/imports"><el-icon><UploadFilled /></el-icon><span>CSV 订单导入</span></el-menu-item>
         <el-menu-item index="/procurement"><el-icon><ShoppingCart /></el-icon><span>采购管理</span></el-menu-item>
         <el-menu-item index="/inventory"><el-icon><Goods /></el-icon><span>库存管理</span></el-menu-item>
         <el-menu-item index="/receiving"><el-icon><TakeawayBox /></el-icon><span>到货收货</span></el-menu-item>

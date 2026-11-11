@@ -26,12 +26,12 @@ Authentication details and error behavior are defined in `auth-spec.md`.
 | POST | `/api/orders/{orderId}/exceptions` | Open an order exception |
 | POST | `/api/orders/{orderId}/exceptions/resolve` | Resolve the current order exception |
 | POST | `/api/orders/{orderId}/cancel` | Cancel an order and release reserved inventory; owner only; consumed inventory blocks cancellation |
-| POST | `/api/order-imports/preview` | Validate a CSV order import without writing business data |
+| POST | `/api/order-imports/preview` | Owner-only multipart CSV preview without writing business orders |
 | POST | `/api/order-imports/{importId}/confirm` | Confirm a validated CSV import; owner only |
 | GET | `/api/order-imports/{importId}` | Return import status and counts |
 | GET | `/api/order-imports/{importId}/errors` | Page safe row-level import errors |
 
-The complete contract, privacy rules, concurrency behavior, and status codes are defined in `order-api.md`. Database design and module behavior are defined in `order-database.md` and `order-spec.md`.
+The complete contract, privacy rules, concurrency behavior, and status codes are defined in `order-api.md`. The implemented CSV template, limits, idempotency rules, and persistence boundary are defined in `order-import-spec.md`.
 
 ## Suppliers
 
@@ -112,4 +112,4 @@ All authenticated employees can view the packing workbench and task detail. Only
 
 Packing completion requires a unique idempotency key and the current task version. Every order quantity and every active inventory allocation must be represented exactly once across its boxes. Completion changes allocations from `RESERVED` to `CONSUMED`, updates lot balances, and appends one `PACKING_CONSUMED` movement per allocation in the same transaction. Completed tasks are immutable and are not reversible in the first packing phase. See `packing-spec.md`.
 
-CSV order import remains the last deferred MVP module. The public project exposes only endpoints required by the approved MVP.
+CSV order import completes the approved MVP module set. The public project exposes only endpoints required by that MVP.
