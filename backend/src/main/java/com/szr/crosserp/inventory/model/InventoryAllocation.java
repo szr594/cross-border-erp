@@ -109,4 +109,11 @@ public class InventoryAllocation {
         this.releasedAt = releasedAt;
         releaseReason = reason;
     }
+
+    public void consume() {
+        if (status != InventoryAllocationStatus.RESERVED) {
+            throw new IllegalStateException("Only reserved allocation can be consumed");
+        }
+        status = InventoryAllocationStatus.CONSUMED;
+    }
 }

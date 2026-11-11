@@ -91,6 +91,15 @@ class DemoInventoryInitializerTest {
               AND allocation.status = 'RELEASED'
             """)).isEqualTo(1);
         assertThat(count("""
+            SELECT COUNT(*) FROM sales_orders orders
+            JOIN sales_order_items item ON item.order_id = orders.id
+            JOIN inventory_allocations allocation ON allocation.sales_order_item_id = item.id
+            WHERE orders.order_no = 'DEMO-240101'
+              AND allocation.status = 'RESERVED'
+            GROUP BY orders.id
+            HAVING SUM(allocation.quantity) = 4
+            """)).isEqualTo(1);
+        assertThat(count("""
             SELECT COUNT(DISTINCT movement.movement_type)
             FROM inventory_movements movement
             JOIN inventory_lots lot ON lot.id = movement.inventory_lot_id

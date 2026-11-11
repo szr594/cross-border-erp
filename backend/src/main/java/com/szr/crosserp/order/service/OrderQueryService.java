@@ -33,6 +33,9 @@ import com.szr.crosserp.order.repository.SalesOrderRepository;
 import com.szr.crosserp.user.model.User;
 import com.szr.crosserp.user.repository.UserRepository;
 import com.szr.crosserp.store.repository.SalesStoreRepository;
+import com.szr.crosserp.inventory.model.InventoryAllocationStatus;
+import com.szr.crosserp.inventory.repository.InventoryAllocationRepository;
+import com.szr.crosserp.packing.repository.PackingTaskRepository;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -62,6 +65,8 @@ public class OrderQueryService {
     private final SalesStoreRepository storeRepository;
     private final UserRepository userRepository;
     private final FulfillmentStageCalculator stageCalculator;
+    private final InventoryAllocationRepository inventoryAllocationRepository;
+    private final PackingTaskRepository packingTaskRepository;
 
     public OrderQueryService(
         SalesOrderRepository orderRepository,
@@ -70,7 +75,9 @@ public class OrderQueryService {
         OrderStatusEventRepository eventRepository,
         SalesStoreRepository storeRepository,
         UserRepository userRepository,
-        FulfillmentStageCalculator stageCalculator
+        FulfillmentStageCalculator stageCalculator,
+        InventoryAllocationRepository inventoryAllocationRepository,
+        PackingTaskRepository packingTaskRepository
     ) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
@@ -79,6 +86,8 @@ public class OrderQueryService {
         this.storeRepository = storeRepository;
         this.userRepository = userRepository;
         this.stageCalculator = stageCalculator;
+        this.inventoryAllocationRepository = inventoryAllocationRepository;
+        this.packingTaskRepository = packingTaskRepository;
     }
 
     public OrderPageResponse findOrders(OrderQuery request) {
@@ -301,7 +310,19 @@ public class OrderQueryService {
             .flatMap(item -> requestsByItem.getOrDefault(item.getId(), List.of()).stream())
             .map(OrderProcurementRequest::getStatus)
             .toList();
-        return stageCalculator.calculate(order, statuses);
+        List<Long> itemIds = items.stream().filter(item -> item.getFulfillmentStatus() == OrderItemFulfillmentStatus.NORMAL)
+            .map(SalesOrderItem::getId).toList();
+        var allocations = itemIds.isEmpty() ? List.<com.szr.crosserp.inventory.model.InventoryAllocation>of()
+            : inventoryAllocationRepository.findBySalesOrderItemIdInOrderByIdAsc(itemIds);
+        boolean fullyCovered = !itemIds.isEmpty() && items.stream()
+            .filter(item -> item.getFulfillmentStatus() == OrderItemFulfillmentStatus.NORMAL)
+            .allMatch(item -> allocations.stream()
+                .filter(allocation -> allocation.getSalesOrderItem().getId().equals(item.getId()))
+                .filter(allocation -> allocation.getStatus() == InventoryAllocationStatus.RESERVED
+                    || allocation.getStatus() == InventoryAllocationStatus.CONSUMED)
+                .mapToInt(com.szr.crosserp.inventory.model.InventoryAllocation::getQuantity).sum() == item.getQuantity());
+        var packingStatus = packingTaskRepository.findByOrderId(order.getId()).map(com.szr.crosserp.packing.model.PackingTask::getStatus).orElse(null);
+        return stageCalculator.calculate(order, statuses, fullyCovered, packingStatus);
     }
 
     private Map<Long, List<SalesOrderItem>> itemsByOrder(List<Long> orderIds) {

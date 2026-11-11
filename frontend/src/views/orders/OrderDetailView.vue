@@ -7,6 +7,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '@/api/http'
 import { authState } from '@/api/auth'
+import { getOrderInventoryCoverage, type InventoryAllocation, type OrderInventoryCoverage } from '@/api/inventory'
 import {
   cancelOrder, changeResponsibleUser, createProcurementRequests, getOrderDetail, getOrderEvents,
   getOrderFilterOptions, getOrderFulfillment, getOrderProcurementRequests, openOrderException,
@@ -29,9 +30,11 @@ const detail = ref<OrderDetail | null>(null)
 const fulfillment = ref<OrderFulfillment | null>(null)
 const events = ref<OrderEventPage | null>(null)
 const procurementRequests = ref<OrderProcurementRequestPage | null>(null)
+const inventoryCoverage = ref<OrderInventoryCoverage | null>(null)
 const eventPage = ref(1)
 const procurementPage = ref(1)
 const procurementLoading = ref(false)
+const inventoryLoading = ref(false)
 const commandLoading = ref(false)
 const responsibleDialog = ref(false)
 const procurementDialog = ref(false)
@@ -47,6 +50,12 @@ const fullAddress = computed(() => {
   if (!customer) return ''
   return [customer.addressLine1, customer.addressLine2, customer.district, customer.city, customer.province, customer.postalCode, customer.countryCode].filter(Boolean).join(' · ')
 })
+const inventorySummary = computed(() => (inventoryCoverage.value?.items ?? []).reduce((summary, item) => ({
+  required: summary.required + item.requiredQuantity,
+  reserved: summary.reserved + item.reservedQuantity,
+  consumed: summary.consumed + item.consumedQuantity,
+  shortage: summary.shortage + item.shortageQuantity,
+}), { required: 0, reserved: 0, consumed: 0, shortage: 0 }))
 
 async function loadOrder() {
   if (!Number.isInteger(orderId.value) || orderId.value < 1) {
@@ -140,6 +149,13 @@ async function loadProcurementRequests(page = procurementPage.value) {
   } finally { procurementLoading.value = false }
 }
 
+async function loadInventoryCoverage() {
+  inventoryLoading.value = true
+  try { inventoryCoverage.value = await getOrderInventoryCoverage(orderId.value) }
+  catch (error) { ElMessage.error(error instanceof ApiError ? error.message : '订单库存覆盖加载失败') }
+  finally { inventoryLoading.value = false }
+}
+
 async function confirmWithdraw(request: OrderProcurementRequest) {
   try {
     const result = await ElMessageBox.prompt(
@@ -184,7 +200,11 @@ function eventName(type: string) {
   return names[type] ?? type
 }
 
-onMounted(() => { void Promise.all([loadOrder(), loadOptions(), loadProcurementRequests()]) })
+function allocationStatusName(status: InventoryAllocation['status']) {
+  return ({ RESERVED: '预留中', CONSUMED: '已消耗', RELEASED: '已释放' } as const)[status]
+}
+
+onMounted(() => { void Promise.all([loadOrder(), loadOptions(), loadProcurementRequests(), loadInventoryCoverage()]) })
 </script>
 
 <template>
@@ -226,6 +246,29 @@ onMounted(() => { void Promise.all([loadOrder(), loadOptions(), loadProcurementR
                 <div class="item-price">{{ money(item.unitPriceMinor, item.currency) }}<small>× {{ item.quantity }}</small></div>
               </article>
             </div>
+          </section>
+
+          <section class="panel inventory-panel" v-loading="inventoryLoading">
+            <div class="panel-heading"><div><span class="section-kicker">INVENTORY COVERAGE</span><h3>订单库存覆盖</h3></div><span>{{ inventoryCoverage?.items.length ?? 0 }} 款商品</span></div>
+            <div class="inventory-summary">
+              <span><small>订单需求</small><strong>{{ inventorySummary.required }}</strong></span>
+              <span><small>有效预留</small><strong>{{ inventorySummary.reserved }}</strong></span>
+              <span><small>已消耗</small><strong>{{ inventorySummary.consumed }}</strong></span>
+              <span :class="{ shortage: inventorySummary.shortage > 0 }"><small>库存缺口</small><strong>{{ inventorySummary.shortage }}</strong></span>
+            </div>
+            <el-alert v-if="inventorySummary.shortage > 0" class="inventory-alert" type="warning" :closable="false" show-icon :title="`仍有 ${inventorySummary.shortage} 件商品缺少库存覆盖，暂不能完成打包`" />
+            <div v-if="inventoryCoverage?.items.length" class="coverage-list">
+              <article v-for="item in inventoryCoverage.items" :key="item.orderItemId" class="coverage-item">
+                <div class="coverage-heading"><div><strong>{{ item.productName }}</strong><small>{{ item.externalSku || '无 SKU' }}<template v-if="item.variantName"> · {{ item.variantName }}</template></small></div><div class="coverage-quantities"><span>需求 <b>{{ item.requiredQuantity }}</b></span><span>预留 <b>{{ item.reservedQuantity }}</b></span><span>消耗 <b>{{ item.consumedQuantity }}</b></span><span :class="{ shortage: item.shortageQuantity > 0 }">缺口 <b>{{ item.shortageQuantity }}</b></span></div></div>
+                <div v-if="item.allocations.length" class="allocation-list">
+                  <button v-for="allocation in item.allocations" :key="allocation.id" type="button" @click="router.push({ name: 'inventory-detail', params: { lotId: allocation.lotId } })">
+                    <span><strong>{{ allocation.lotNo }}</strong><small>{{ allocation.allocationNo }}</small></span><em>{{ allocation.quantity }} 件</em><el-tag :type="allocation.status === 'RESERVED' ? 'primary' : allocation.status === 'CONSUMED' ? 'success' : 'info'" size="small">{{ allocationStatusName(allocation.status) }}</el-tag>
+                  </button>
+                </div>
+                <div v-else class="no-allocation">尚无库存批次分配</div>
+              </article>
+            </div>
+            <el-empty v-else-if="!inventoryLoading" description="暂无订单库存覆盖记录" :image-size="72" />
           </section>
 
           <ProcurementRequestPanel v-if="canViewProcurement" :page="procurementRequests" :loading="procurementLoading" @page-change="loadProcurementRequests" @withdraw="confirmWithdraw" />
@@ -272,7 +315,8 @@ onMounted(() => { void Promise.all([loadOrder(), loadOptions(), loadProcurementR
 .facts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }.fact-card { display: grid; gap: 5px; padding: 16px 18px; border: 1px solid var(--erp-border); border-radius: var(--erp-radius); background: var(--erp-surface); }.fact-card span, .contact-row span { color: var(--erp-text-muted); font-size: 12px; }.fact-card strong { font-size: 14px; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .7fr); gap: 18px; align-items: start; }.detail-main, .detail-side { display: grid; gap: 18px; }.panel { padding: 22px; border: 1px solid var(--erp-border); border-radius: var(--erp-radius); background: var(--erp-surface); box-shadow: 0 8px 24px rgb(28 55 49 / 5%); }.panel-heading { margin-bottom: 18px; }.panel-heading h3 { margin: 2px 0 0; font-size: 17px; }.panel-heading > span { color: var(--erp-text-muted); font-size: 12px; }
 .item-list { display: grid; }.fulfillment-item { display: grid; grid-template-columns: minmax(220px, 1.4fr) minmax(150px, .8fr) minmax(230px, 1fr) 85px; gap: 18px; align-items: center; padding: 18px 0; border-top: 1px solid var(--erp-border); }.fulfillment-item:first-child { border-top: 0; padding-top: 0; }.item-identity { display: flex; align-items: center; gap: 12px; }.item-thumb { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border-radius: 9px; color: var(--erp-primary); background: var(--erp-primary-soft); font-weight: 800; }.item-identity strong, .item-identity small { display: block; }.item-identity small { margin-top: 3px; color: var(--erp-text-muted); font-size: 11px; }.progress-copy { margin-bottom: 6px; font-size: 11px; }.quantity-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }.quantity-grid span { color: var(--erp-text-muted); font-size: 10px; text-align: center; }.quantity-grid strong { display: block; color: var(--erp-text); font-size: 15px; }.quantity-grid .missing { color: #c45656; }.item-price { text-align: right; font-weight: 700; }.item-price small { display: block; color: var(--erp-text-muted); font-weight: 400; }
+.inventory-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }.inventory-summary > span { display: grid; gap: 3px; padding: 12px 14px; border-radius: 8px; background: var(--erp-canvas); }.inventory-summary small { color: var(--erp-text-muted); }.inventory-summary strong { font-size: 20px; }.inventory-summary .shortage { color: #b66713; background: #fff6e8; }.inventory-alert { margin-bottom: 14px; }.coverage-list { display: grid; border-top: 1px solid var(--erp-border); }.coverage-item { padding: 17px 0; border-bottom: 1px solid var(--erp-border); }.coverage-item:last-child { padding-bottom: 0; border-bottom: 0; }.coverage-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }.coverage-heading > div:first-child { display: grid; gap: 3px; }.coverage-heading small { color: var(--erp-text-muted); font-size: 11px; }.coverage-quantities { display: flex; gap: 16px; color: var(--erp-text-muted); font-size: 12px; }.coverage-quantities b { color: var(--erp-text); }.coverage-quantities .shortage, .coverage-quantities .shortage b { color: #b66713; }.allocation-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }.allocation-list button { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--erp-border); border-radius: 8px; color: inherit; background: #f8faf9; cursor: pointer; text-align: left; transition: border-color .2s, background .2s; }.allocation-list button:hover { border-color: #91b8af; background: #f1f8f6; }.allocation-list button > span { display: grid; min-width: 0; gap: 2px; }.allocation-list strong, .allocation-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.allocation-list strong { color: var(--erp-primary); }.allocation-list small { color: var(--erp-text-muted); font-size: 10px; }.allocation-list em { color: var(--erp-text-muted); font-style: normal; font-size: 12px; }.no-allocation { margin-top: 10px; padding: 10px 12px; border-radius: 8px; color: var(--erp-text-muted); background: var(--erp-canvas); font-size: 12px; }
 .event-card { padding: 13px 15px; border: 1px solid var(--erp-border); border-radius: 8px; background: #f8faf9; }.event-card strong, .event-card p { overflow-wrap: anywhere; }.event-card p { margin: 3px 0; color: var(--erp-text-muted); }.event-card small { color: #94a09d; }.events-panel :deep(.el-pagination) { justify-content: flex-end; }.contact-row { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--erp-border); }.contact-row:first-of-type { border-top: 0; }.contact-row .el-icon { margin-top: 3px; color: var(--erp-primary); }.contact-row strong, .contact-row small { display: block; }.contact-row strong { margin: 2px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }.contact-row small { color: var(--erp-text-muted); }.note-panel p { margin: 0; color: var(--erp-text-muted); overflow-wrap: anywhere; }.deadline-panel { display: flex; gap: 12px; color: white; background: #263f3a; }.deadline-panel .el-icon { margin-top: 3px; color: #e6b26f; }.deadline-panel span, .deadline-panel strong, .deadline-panel small { display: block; }.deadline-panel span, .deadline-panel small { color: #b8cbc7; font-size: 11px; }.deadline-panel strong { margin: 3px 0; }
 @media (max-width: 1180px) { .detail-layout { grid-template-columns: 1fr; }.detail-side { grid-template-columns: repeat(2, 1fr); }.customer-panel { grid-row: span 2; }.fulfillment-item { grid-template-columns: 1fr 1fr; }.item-price { text-align: left; } }
-@media (max-width: 720px) { .detail-toolbar, .detail-hero { align-items: flex-start; flex-direction: column; }.detail-hero { padding: 20px; }.hero-status { justify-items: start; }.facts-grid, .detail-side { grid-template-columns: 1fr; }.fulfillment-item { grid-template-columns: 1fr; }.quantity-grid { grid-template-columns: repeat(2, 1fr); }.customer-panel { grid-row: auto; }.toolbar-actions { flex-wrap: wrap; }.panel { min-width: 0; padding: 18px; } }
+@media (max-width: 720px) { .detail-toolbar, .detail-hero, .coverage-heading { align-items: flex-start; flex-direction: column; }.detail-hero { padding: 20px; }.hero-status { justify-items: start; }.facts-grid, .detail-side, .inventory-summary, .allocation-list { grid-template-columns: 1fr; }.fulfillment-item { grid-template-columns: 1fr; }.quantity-grid { grid-template-columns: repeat(2, 1fr); }.coverage-quantities { flex-wrap: wrap; }.customer-panel { grid-row: auto; }.toolbar-actions { flex-wrap: wrap; }.panel { min-width: 0; padding: 18px; } }
 </style>

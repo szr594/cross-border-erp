@@ -135,6 +135,15 @@ public class InventoryLot {
         refreshStatus();
     }
 
+    public void consumeReservation(int quantity) {
+        if (quantity <= 0 || quantity > reservedQuantity) {
+            throw new IllegalArgumentException("Consume quantity exceeds reserved inventory");
+        }
+        reservedQuantity -= quantity;
+        consumedQuantity += quantity;
+        refreshStatus();
+    }
+
     public void adjustIn(int quantity) {
         requirePositive(quantity);
         initialQuantity += quantity;

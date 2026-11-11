@@ -93,6 +93,23 @@ All authenticated employees can query inventory lots, movements, allocations, an
 
 Inventory commands require a non-empty reason, an idempotency key, and the current entity version. Reusing a key for the same command returns the prior result; reusing it for different command data returns `INVENTORY_IDEMPOTENCY_CONFLICT`. Inventory movements are append-only. Manual allocation cannot exceed the lot's available balance, the matching purchase source remainder, or the sales-order item shortage. Adjustment-out never consumes reserved inventory. Quarantine release preserves the lot's `DAMAGED` source marker while making the released quantity available.
 
-The approved inventory boundary and remaining planned APIs are defined in `inventory-spec.md`. Automatic and manual source-based allocation, the command service, and the read-only query layer are implemented; frontend inventory pages are not implemented yet.
+The approved inventory boundary is defined in `inventory-spec.md`. Automatic and manual source-based allocation, the command service, read-only query layer, inventory workbench, lot detail, and order coverage panel are implemented.
 
-Remaining modules will be specified before implementation. The public project exposes only endpoints required by the approved MVP.
+## Packing
+
+All authenticated employees can view the packing workbench and task detail. Only `OWNER` and `PACKING` can start or mutate a packing task. An order can start packing only after every normal order item is fully covered by reserved inventory.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/packing/tasks` | List ready orders and existing packing tasks by order keyword and status |
+| GET | `/api/packing/orders/{orderId}` | Return packing detail, inventory allocations, boxes, items, events, and available actions |
+| POST | `/api/packing/orders/{orderId}/start` | Start the single packing task for a fully reserved order |
+| POST | `/api/packing/tasks/{taskId}/boxes` | Add one box with allocation-level item quantities |
+| PUT | `/api/packing/tasks/{taskId}/boxes/{boxId}` | Replace box measurements, note, and allocation quantities |
+| DELETE | `/api/packing/tasks/{taskId}/boxes/{boxId}` | Delete a box from a draft task using the current task version |
+| POST | `/api/packing/tasks/{taskId}/complete` | Validate complete allocation coverage and atomically consume reserved inventory |
+| POST | `/api/packing/tasks/{taskId}/cancel` | Cancel a draft packing task without consuming inventory |
+
+Packing completion requires a unique idempotency key and the current task version. Every order quantity and every active inventory allocation must be represented exactly once across its boxes. Completion changes allocations from `RESERVED` to `CONSUMED`, updates lot balances, and appends one `PACKING_CONSUMED` movement per allocation in the same transaction. Completed tasks are immutable and are not reversible in the first packing phase. See `packing-spec.md`.
+
+CSV order import remains the last deferred MVP module. The public project exposes only endpoints required by the approved MVP.

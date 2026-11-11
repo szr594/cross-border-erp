@@ -106,6 +106,24 @@ export interface InventoryMovementPage {
   totalPages: number
 }
 
+export interface OrderInventoryItem {
+  orderItemId: number
+  externalSku: string | null
+  productName: string
+  variantName: string | null
+  requiredQuantity: number
+  reservedQuantity: number
+  consumedQuantity: number
+  shortageQuantity: number
+  allocations: InventoryAllocation[]
+}
+
+export interface OrderInventoryCoverage {
+  orderId: number
+  orderNo: string
+  items: OrderInventoryItem[]
+}
+
 export interface InventoryLotQuery {
   page: number
   size: number
@@ -145,6 +163,10 @@ export function getInventoryLot(lotId: number) {
 
 export function getInventoryMovements(lotId: number, page: number, size: number) {
   return requestJson<InventoryMovementPage>(`/api/inventory/lots/${lotId}/movements?page=${page}&size=${size}`)
+}
+
+export function getOrderInventoryCoverage(orderId: number) {
+  return requestJson<OrderInventoryCoverage>(`/api/orders/${orderId}/inventory-allocations`)
 }
 
 export function allocateInventory(lotId: number, payload: {

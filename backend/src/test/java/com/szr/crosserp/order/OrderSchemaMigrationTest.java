@@ -63,7 +63,7 @@ class OrderSchemaMigrationTest {
 
     @Test
     void laterMigrationsKeepAllOrderTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
 
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();

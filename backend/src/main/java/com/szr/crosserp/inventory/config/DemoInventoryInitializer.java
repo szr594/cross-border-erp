@@ -34,6 +34,8 @@ public class DemoInventoryInitializer implements ApplicationRunner {
     private static final String RECEIPT_KEY = "demo-receipt-20260002";
     private static final String RELEASE_KEY = "demo-inventory-release-20260002";
     private static final String ADJUSTMENT_KEY = "demo-inventory-adjustment-20260002";
+    private static final String PACKING_TRACKING_NUMBER = "DEMO-SF-PACKING-20260001";
+    private static final String PACKING_RECEIPT_KEY = "demo-receipt-packing-20260001";
 
     private final UserRepository userRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
@@ -141,6 +143,47 @@ public class DemoInventoryInitializer implements ApplicationRunner {
                     ADJUSTMENT_KEY, currentLot.getVersion()
                 ),
                 owner.getId().toString(), List.of("OWNER")
+            );
+        }
+
+        createPackingReadyOrder(owner.getId().toString());
+    }
+
+    private void createPackingReadyOrder(String ownerId) {
+        var packingPurchaseOrder = purchaseOrderRepository.findByPurchaseOrderNo("DEMO-PO-240101").orElse(null);
+        if (packingPurchaseOrder == null) {
+            return;
+        }
+        var packingItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(packingPurchaseOrder.getId());
+        if (packingItems.isEmpty()) {
+            return;
+        }
+        var domesticPackage = packageRepository
+            .findByCarrierAndTrackingNumber("SF_EXPRESS", PACKING_TRACKING_NUMBER)
+            .orElseGet(() -> {
+                packingPurchaseOrder.updateReceivingStatus(false, false);
+                purchaseOrderRepository.saveAndFlush(packingPurchaseOrder);
+                var response = receivingCommandService.register(
+                    new CreateDomesticPackageRequest(
+                        packingPurchaseOrder.getId(), PACKING_TRACKING_NUMBER, "SF_EXPRESS", null,
+                        "演示：待打包订单完整到货"
+                    ),
+                    ownerId, List.of("OWNER")
+                );
+                return packageRepository.findById(response.id()).orElseThrow();
+            });
+        if (receiptRepository.findByIdempotencyKey(PACKING_RECEIPT_KEY).isEmpty()) {
+            var item = packingItems.get(0);
+            receivingCommandService.confirm(
+                domesticPackage.getId(),
+                new ConfirmGoodsReceiptRequest(
+                    PACKING_RECEIPT_KEY, domesticPackage.getVersion(),
+                    List.of(new ConfirmReceiptItemCommand(
+                        item.getId(), item.getPurchasedQuantity(), 0, "演示：完整收货并自动预留"
+                    )),
+                    List.of(), "演示：生成待打包订单"
+                ),
+                ownerId, List.of("OWNER")
             );
         }
     }
