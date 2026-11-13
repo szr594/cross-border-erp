@@ -5,21 +5,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.5</version>
-        <relativePath/>
+        <groupId>com.szr</groupId>
+        <artifactId>cross-border-erp-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.szr</groupId>
     <artifactId>cross-border-erp</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
     <name>cross-border-erp</name>
     <description>Portfolio cross-border order fulfillment ERP</description>
-
-    <properties>
-        <java.version>17</java.version>
-    </properties>
 
     <dependencies>
         <dependency>

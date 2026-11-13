@@ -4,6 +4,7 @@
 *.log
 
 backend/target/
+services/*/target/
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo

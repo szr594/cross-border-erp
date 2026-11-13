@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cross Border ERP 微服务改造进度</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --border: #dbe4ef;
+      --text: #172033;
+      --muted: #667085;
+      --primary: #2563eb;
+      --primary-soft: #eaf2ff;
+      --success: #15803d;
+      --success-soft: #eaf8ef;
+      --warning: #b45309;
+      --warning-soft: #fff7e8;
+      --pending: #64748b;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+    }
+
+    main {
+      width: min(1440px, calc(100% - 40px));
+      margin: 40px auto 64px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .intro {
+      padding: 30px 32px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.2;
+    }
+
+    .summary {
+      max-width: 820px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    .current-task {
+      margin-top: 22px;
+      padding: 16px 18px;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      background: var(--primary-soft);
+    }
+
+    .current-task strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #1d4ed8;
+    }
+
+    .current-task span {
+      line-height: 1.6;
+    }
+
+    .progress-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 28px;
+    }
+
+    .progress-number {
+      margin-bottom: 8px;
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .progress-label {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .progress-track {
+      height: 12px;
+      margin-top: 20px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e7edf5;
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #2563eb, #60a5fa);
+      transition: width 300ms ease;
+    }
+
+    .progress-detail {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-panel {
+      overflow: hidden;
+    }
+
+    .table-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px 28px 18px;
+    }
+
+    .table-header h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    .table-header p,
+    .updated-at {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1080px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 15px 16px;
+      border-top: 1px solid var(--border);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--surface-soft);
+      color: #475467;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    td {
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    tbody tr:hover {
+      background: #fbfdff;
+    }
+
+    tbody tr[data-status="doing"] {
+      background: var(--warning-soft);
+    }
+
+    .task-id {
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-weight: 700;
+    }
+
+    .task-name {
+      min-width: 190px;
+      font-weight: 700;
+    }
+
+    .acceptance {
+      min-width: 330px;
+      color: #475467;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 96px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.done {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .status.doing {
+      color: var(--warning);
+      background: #ffefd1;
+    }
+
+    .status.pending {
+      color: var(--pending);
+      background: #eef2f6;
+    }
+
+    .check {
+      display: inline-grid;
+      width: 19px;
+      height: 19px;
+      place-items: center;
+      border: 2px solid #a8b3c2;
+      border-radius: 5px;
+      color: transparent;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    tr[data-status="done"] .check {
+      border-color: var(--success);
+      color: #ffffff;
+      background: var(--success);
+    }
+
+    tr[data-status="doing"] .check {
+      border-color: #f59e0b;
+      background: #fff7e8;
+    }
+
+    .date {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .note {
+      padding: 20px 22px;
+    }
+
+    .note h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #eef2f7;
+      color: #334155;
+      font-family: Consolas, monospace;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        width: min(100% - 24px, 1440px);
+        margin-top: 20px;
+      }
+
+      .hero,
+      .notes {
+        grid-template-columns: 1fr;
+      }
+
+      .intro,
+      .progress-card {
+        padding: 24px;
+      }
+
+      .table-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <article class="panel intro">
+      <p class="eyebrow">Cross Border ERP</p>
+      <h1>微服务架构改造任务看板</h1>
+      <p class="summary">
+        在保留现有单体后端作为可运行基线的前提下，逐步迁移认证、订单、采购、仓储和打包能力。
+        每项任务只有通过对应验收条件后才会勾选完成。
+      </p>
+      <div class="current-task">
+        <strong>下一项：MS-06 统一网关服务</strong>
+        <span>实现统一公共入口、Strangler 路由、追踪标识和基础健康检查。</span>
+      </div>
+    </article>
+
+    <aside class="panel progress-card">
+      <div class="progress-number" id="progress-percent">0%</div>
+      <div class="progress-label">总体完成度</div>
+      <div class="progress-track" aria-label="总体完成度">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-detail" id="progress-detail">正在计算任务进度</div>
+    </aside>
+  </section>
+
+  <section class="panel table-panel">
+    <header class="table-header">
+      <div>
+        <h2>任务清单</h2>
+        <p>完成标志以代码、文档和实际验证结果为准。</p>
+      </div>
+      <div class="updated-at">最近更新：2026-11-13</div>
+    </header>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+        <tr>
+          <th>勾选</th>
+          <th>编号</th>
+          <th>阶段</th>
+          <th>任务</th>
+          <th>验收条件</th>
+          <th>状态</th>
+          <th>完成日期</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-01</td>
+          <td>准备</td>
+          <td class="task-name">现有单体基线检查</td>
+          <td class="acceptance">确认认证、订单、CSV 导入、采购、收货、库存和打包模块，以及现有测试与迁移脚本。</td>
+          <td><span class="status done">✓ 已完成</span></td>
+          <td class="date">2026-11-13</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-02</td>
+          <td>准备</td>
+          <td class="task-name">服务边界确认</td>
+          <td class="acceptance">确认网关、认证、订单、采购、仓储、打包六个服务，并批准 RabbitMQ 与渐进式迁移策略。</td>
+          <td><span class="status done">✓ 已完成</span></td>
+          <td class="date">2026-11-13</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-03</td>
+          <td>准备</td>
+          <td class="task-name">建立 HTML 进度看板</td>
+          <td class="acceptance">可直接使用浏览器打开，展示总体进度、当前任务、验收条件和完成日期。</td>
+          <td><span class="status done">✓ 已完成</span></td>
+          <td class="date">2026-11-13</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-04</td>
+          <td>设计</td>
+          <td class="task-name">微服务架构文档</td>
+          <td class="acceptance">记录职责、数据所有权、接口、事件、Outbox/Inbox、故障处理和迁移顺序。</td>
+          <td><span class="status done">✓ 已完成</span></td>
+          <td class="date">2026-11-13</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-05</td>
+          <td>骨架</td>
+          <td class="task-name">Maven 多模块父工程</td>
+          <td class="acceptance">根目录统一管理 Java、Spring Boot 和 Spring Cloud 版本，各服务可独立构建。</td>
+          <td><span class="status done">✓ 已完成</span></td>
+          <td class="date">2026-11-13</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-06</td>
+          <td>基础设施</td>
+          <td class="task-name">统一网关服务</td>
+          <td class="acceptance">所有前端请求经网关路由，健康检查和基础 JWT 校验通过。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-07</td>
+          <td>业务迁移</td>
+          <td class="task-name">认证与权限服务</td>
+          <td class="acceptance">登录、刷新、退出、锁定策略和角色权限迁移完成，认证回归测试通过。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-08</td>
+          <td>业务迁移</td>
+          <td class="task-name">订单与 CSV 导入服务</td>
+          <td class="acceptance">订单查询、命令、履约阶段、事件和 CSV 导入迁移完成，API 契约保持兼容。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-09</td>
+          <td>业务迁移</td>
+          <td class="task-name">采购服务</td>
+          <td class="acceptance">供应商、采购需求、采购单和需求分配迁移完成，并完成跨服务订单引用。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-10</td>
+          <td>业务迁移</td>
+          <td class="task-name">收货与库存服务</td>
+          <td class="acceptance">确认收货自动入库保持单库事务，批次、分配、流水及并发测试全部通过。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-11</td>
+          <td>业务迁移</td>
+          <td class="task-name">打包服务</td>
+          <td class="acceptance">待打包查询、多箱分配、完成打包迁移完成，库存消耗通过可靠事件联动。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-12</td>
+          <td>可靠性</td>
+          <td class="task-name">RabbitMQ 与 Outbox/Inbox</td>
+          <td class="acceptance">关键事件至少一次投递，消费者幂等，失败可重试且能够追踪。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-13</td>
+          <td>前端</td>
+          <td class="task-name">前端统一接入网关</td>
+          <td class="acceptance">现有页面无需直接感知服务地址，登录、查询和命令请求全部经网关完成。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-14</td>
+          <td>部署</td>
+          <td class="task-name">Docker Compose 与独立数据库</td>
+          <td class="acceptance">服务、MySQL 独立逻辑库和 RabbitMQ 可一键启动，健康检查全部通过。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-15</td>
+          <td>验证</td>
+          <td class="task-name">跨服务集成与故障测试</td>
+          <td class="acceptance">完整闭环、重复消息、服务短暂不可用和消息重试场景验证通过。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-16</td>
+          <td>验证</td>
+          <td class="task-name">浏览器人工验收</td>
+          <td class="acceptance">登录、订单、采购、收货、库存、打包和 CSV 导入关键路径实际点击通过。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-17</td>
+          <td>交付</td>
+          <td class="task-name">README 与接口文档</td>
+          <td class="acceptance">启动说明、服务清单、端口、数据库、事件和 API 与最终实现一致。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        <tr data-status="pending">
+          <td><span class="check" aria-label="未完成">✓</span></td>
+          <td class="task-id">MS-18</td>
+          <td>收尾</td>
+          <td class="task-name">清理旧单体后端</td>
+          <td class="acceptance">全部功能达到迁移验收条件后再删除旧代码，保留迁移说明和可追溯 Git 记录。</td>
+          <td><span class="status pending">未开始</span></td>
+          <td class="date">—</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="notes">
+    <article class="panel note">
+      <h3>当前原则</h3>
+      <p>保留 <code>backend</code> 作为可运行基线，任何旧模块只有在新服务功能和测试全部对齐后才清理。</p>
+    </article>
+    <article class="panel note">
+      <h3>数据边界</h3>
+      <p>本地可共用一个 MySQL 8.4 实例，但每个服务拥有独立数据库，禁止跨服务直接查询数据表。</p>
+    </article>
+    <article class="panel note">
+      <h3>一致性方式</h3>
+      <p>服务内使用本地事务；跨服务通过 RabbitMQ、Outbox 和幂等 Inbox 完成最终一致性。</p>
+    </article>
+  </section>
+</main>
+
+<script>
+  const taskRows = Array.from(document.querySelectorAll('tbody tr[data-status]'));
+  const completedTasks = taskRows.filter((row) => row.dataset.status === 'done').length;
+  const percent = Math.round((completedTasks / taskRows.length) * 100);
+
+  document.getElementById('progress-percent').textContent = `${percent}%`;
+  document.getElementById('progress-bar').style.width = `${percent}%`;
+  document.getElementById('progress-detail').textContent =
+    `已完成 ${completedTasks} / ${taskRows.length} 项任务`;
+</script>
+</body>
+</html>
