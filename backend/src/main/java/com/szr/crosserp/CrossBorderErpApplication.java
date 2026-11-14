@@ -7,7 +7,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class CrossBorderErpApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CrossBorderErpApplication.class, args);
+        var context = SpringApplication.run(CrossBorderErpApplication.class, args);
+        if (context.getEnvironment().matchesProfiles("init-owner")) {
+            context.close();
+        }
     }
 }
 

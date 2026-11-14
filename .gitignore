@@ -1,6 +1,7 @@
 .idea/
 .vscode/
 .env
+.env.production
 *.log
 
 backend/target/

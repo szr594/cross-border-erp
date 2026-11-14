@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+**/target
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+output
+tmp
+.idea
+.vscode
+uploads
+**/*.log
