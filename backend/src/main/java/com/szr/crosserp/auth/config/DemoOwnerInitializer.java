@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.auth.legacy-enabled", havingValue="true", matchIfMissing=true)
 @Profile("dev")
 @Order(10)
 public class DemoOwnerInitializer implements ApplicationRunner {

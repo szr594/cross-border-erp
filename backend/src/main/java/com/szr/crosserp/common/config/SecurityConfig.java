@@ -58,7 +58,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(AuthProperties properties) {
+    JwtDecoder jwtDecoder(AuthProperties properties,
+        @org.springframework.beans.factory.annotation.Value("${IDENTITY_PUBLIC_KEY:}") String publicKeyFile,
+        org.springframework.core.io.ResourceLoader resources) throws java.io.IOException {
+        if (!publicKeyFile.isBlank()) {
+            try (var stream = resources.getResource(publicKeyFile).getInputStream()) {
+                var publicKey = org.springframework.security.converter.RsaKeyConverters.x509().convert(stream);
+                if (publicKey == null || publicKey.getModulus().bitLength() < 2048) throw new IllegalStateException("Invalid RSA public key");
+                var decoder = NimbusJwtDecoder.withPublicKey(publicKey)
+                    .signatureAlgorithm(org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256).build();
+                decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("cross-border-erp"));
+                return decoder;
+            }
+        }
         byte[] secret = properties.jwtSecret() == null
             ? new byte[0]
             : properties.jwtSecret().getBytes(StandardCharsets.UTF_8);

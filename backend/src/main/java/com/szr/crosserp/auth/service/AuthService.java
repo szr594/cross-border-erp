@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.auth.legacy-enabled", havingValue="true", matchIfMissing=true)
 public class AuthService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();

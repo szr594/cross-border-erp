@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.auth.legacy-enabled", havingValue="true", matchIfMissing=true)
 @RequestMapping("/api/auth")
 public class AuthController {
 

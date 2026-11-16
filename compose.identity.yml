@@ -1,0 +1,59 @@
+services:
+  identity-mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cross_erp_identity
+      MYSQL_USER: identity_app
+      MYSQL_PASSWORD: ${IDENTITY_DATABASE_PASSWORD:?Set IDENTITY_DATABASE_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${IDENTITY_MYSQL_ROOT_PASSWORD:?Set IDENTITY_MYSQL_ROOT_PASSWORD}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
+    volumes:
+      - identity_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u identity_app cross_erp_identity -e 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  identity:
+    image: cross-border-erp-production-identity:latest
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      IDENTITY_DATABASE_URL: jdbc:mysql://identity-mysql:3306/cross_erp_identity?connectionTimeZone=UTC
+      IDENTITY_DATABASE_USER: identity_app
+      IDENTITY_DATABASE_PASSWORD: ${IDENTITY_DATABASE_PASSWORD:?Set IDENTITY_DATABASE_PASSWORD}
+      IDENTITY_PRIVATE_KEY: file:/run/keys/private.pem
+      IDENTITY_PUBLIC_KEY: file:/run/keys/public.pem
+      IDENTITY_KEY_ID: ${IDENTITY_KEY_ID:?Set IDENTITY_KEY_ID}
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
+    volumes:
+      - ${IDENTITY_KEYS_DIR:?Set IDENTITY_KEYS_DIR}:/run/keys:ro
+    depends_on:
+      identity-mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://127.0.0.1:8081/api/auth/me 2>&1 | grep -q '401'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  backend:
+    environment:
+      APP_AUTH_LEGACY_ENABLED: 'false'
+      IDENTITY_PUBLIC_KEY: file:/run/keys/public.pem
+    volumes:
+      - ${IDENTITY_KEYS_DIR:?Set IDENTITY_KEYS_DIR}/public.pem:/run/keys/public.pem:ro
+  gateway:
+    environment:
+      IDENTITY_PUBLIC_KEY: file:/run/keys/public.pem
+      IDENTITY_SERVICE_URL: http://identity:8081
+    volumes:
+      - ${IDENTITY_KEYS_DIR:?Set IDENTITY_KEYS_DIR}/public.pem:/run/keys/public.pem:ro
+    depends_on:
+      identity:
+        condition: service_healthy
+volumes:
+  identity_mysql_data:

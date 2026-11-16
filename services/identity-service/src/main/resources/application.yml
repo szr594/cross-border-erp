@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: ${IDENTITY_DATABASE_URL}
+    username: ${IDENTITY_DATABASE_USER}
+    password: ${IDENTITY_DATABASE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+server:
+  port: ${IDENTITY_PORT:8081}
+app:
+  auth:
+    private-key: ${IDENTITY_PRIVATE_KEY}
+    public-key: ${IDENTITY_PUBLIC_KEY}
+    key-id: ${IDENTITY_KEY_ID}
+    access-token-minutes: 15
+    refresh-token-days: 7
+    max-login-failures: 5
+    lock-minutes: 15
+    refresh-cookie-name: cross_erp_refresh
+    secure-cookie: ${SECURE_COOKIE:true}

@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.auth.legacy-enabled", havingValue="true", matchIfMissing=true)
 public class JwtService {
 
     private final AuthProperties properties;

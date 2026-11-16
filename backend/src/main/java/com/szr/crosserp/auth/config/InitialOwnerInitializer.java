@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.auth.legacy-enabled", havingValue="true", matchIfMissing=true)
 @Profile("init-owner")
 public class InitialOwnerInitializer implements ApplicationRunner {
     private final UserRepository users;
