@@ -1,6 +1,6 @@
 package com.szr.crosserp.procurement.model;
 
-import com.szr.crosserp.order.model.OrderProcurementRequest;
+import com.szr.crosserp.integration.orders.model.ProcurementRequestProjection;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -25,7 +25,7 @@ public class PurchaseOrderAllocation {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "procurement_request_id", nullable = false)
-    private OrderProcurementRequest procurementRequest;
+    private ProcurementRequestProjection procurementRequest;
 
     @Column(name = "allocated_quantity", nullable = false)
     private int allocatedQuantity;
@@ -38,7 +38,7 @@ public class PurchaseOrderAllocation {
 
     public PurchaseOrderAllocation(
         PurchaseOrderItem purchaseOrderItem,
-        OrderProcurementRequest procurementRequest,
+        ProcurementRequestProjection procurementRequest,
         int allocatedQuantity
     ) {
         this.purchaseOrderItem = purchaseOrderItem;
@@ -48,7 +48,10 @@ public class PurchaseOrderAllocation {
 
     public Long getId() { return id; }
     public PurchaseOrderItem getPurchaseOrderItem() { return purchaseOrderItem; }
-    public OrderProcurementRequest getProcurementRequest() { return procurementRequest; }
+    public PurchaseOrderAllocation(PurchaseOrderItem item,com.szr.crosserp.order.model.OrderProcurementRequest request,int quantity) {
+        this(item,ProcurementRequestProjection.fromLegacy(request),quantity);
+    }
+    public ProcurementRequestProjection getProcurementRequest() { return procurementRequest; }
     public int getAllocatedQuantity() { return allocatedQuantity; }
     public Instant getCreatedAt() { return createdAt; }
 }

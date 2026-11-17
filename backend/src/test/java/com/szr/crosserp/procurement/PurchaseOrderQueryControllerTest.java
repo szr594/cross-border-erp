@@ -58,6 +58,8 @@ class PurchaseOrderQueryControllerTest {
     @Autowired PurchaseOrderItemRepository purchaseItemRepository;
     @Autowired PurchaseOrderAllocationRepository allocationRepository;
     @Autowired PurchaseOrderEventRepository eventRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entityManager;
 
     private PurchaseOrder purchaseOrder;
     private Supplier supplier;
@@ -92,6 +94,28 @@ class PurchaseOrderQueryControllerTest {
         ));
         allocationRepository.save(new PurchaseOrderAllocation(purchaseItem, request, 2));
         eventRepository.save(new PurchaseOrderEvent(purchaseOrder, "CREATED", buyer, "创建采购单", Instant.now()));
+    }
+
+    @Test
+    void pendingBridgeOrderIsHiddenUntilConfirmation() throws Exception {
+        entityManager.flush();
+        jdbc.update("update purchase_orders set bridge_confirmed=false where id=?",purchaseOrder.getId());
+        entityManager.clear();
+        mockMvc.perform(get("/api/purchase-orders").param("supplierId",supplier.getId().toString()).with(jwt()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0))
+            .andExpect(jsonPath("$.totalElements").value(0));
+        mockMvc.perform(get("/api/purchase-orders/{id}",purchaseOrder.getId()).with(jwt()))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PURCHASE_ORDER_NOT_FOUND"));
+        mockMvc.perform(get("/api/purchase-orders/{id}/events",purchaseOrder.getId()).with(jwt()))
+            .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("PURCHASE_ORDER_NOT_FOUND"));
+        jdbc.update("update purchase_orders set bridge_confirmed=true where id=?",purchaseOrder.getId());
+        entityManager.clear();
+        mockMvc.perform(get("/api/purchase-orders").param("supplierId",supplier.getId().toString()).with(jwt()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.totalElements").value(1));
+        mockMvc.perform(get("/api/purchase-orders/{id}",purchaseOrder.getId()).with(jwt())).andExpect(status().isOk());
+        mockMvc.perform(get("/api/purchase-orders/{id}/events",purchaseOrder.getId()).with(jwt()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].eventType").value("CREATED"));
     }
 
     @Test

@@ -52,6 +52,38 @@ class PurchaseOrderCommandControllerTest {
     @Autowired SalesOrderItemRepository salesOrderItemRepository;
     @Autowired OrderProcurementRequestRepository requestRepository;
     @Autowired EntityManager entityManager;
+    @Autowired com.fasterxml.jackson.databind.ObjectMapper mapper;
+    @Autowired com.szr.crosserp.procurement.service.PurchaseOrderCommandService commandService;
+
+    @Test
+    void claimedCreationPersistsHiddenOrderWithoutConvertingLegacyRequests() throws Exception {
+        Fixture fixture=fixture();
+        entityManager.flush();
+        jdbcTemplate.update("update order_business_projections set authority='ORDER' where order_id=(select order_id from sales_order_items where id=?)",fixture.first().getOrderItem().getId());
+        var input=mapper.readValue(command(fixture,2,3),com.szr.crosserp.procurement.dto.CreatePurchaseOrderRequest.class);
+        var result=commandService.createClaimed(input,fixture.buyer().getId().toString(),List.of("OWNER"));
+        assertThat(jdbcTemplate.queryForObject("select bridge_confirmed from purchase_orders where id=?",Boolean.class,result.id())).isFalse();
+        assertThat(jdbcTemplate.queryForList("select status from order_procurement_requests where id in (?,?) order by id",String.class,fixture.first().getId(),fixture.second().getId())).containsExactly("REQUESTED","REQUESTED");
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).allocations()).hasSize(2);
+    }
+
+    @Test
+    void idempotencyHeaderReturnsOriginalOrderAndRejectsChangedPayload() throws Exception {
+        Fixture fixture=fixture();String key="test-"+UUID.randomUUID();
+        String body=command(fixture,2,3);
+        String first=mockMvc.perform(post("/api/purchase-orders").with(actor(fixture.buyer(),"OWNER"))
+            .header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String repeated=mockMvc.perform(post("/api/purchase-orders").with(actor(fixture.buyer(),"OWNER"))
+            .header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        assertThat(repeated).isEqualTo(first);
+        assertThat(jdbcTemplate.queryForObject("select count(*) from purchase_orders where supplier_id=?",Long.class,fixture.supplier().getId())).isEqualTo(1);
+        mockMvc.perform(post("/api/purchase-orders").with(actor(fixture.buyer(),"OWNER"))
+            .header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(body.replace("合并采购\"","变更采购\"")))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("PURCHASE_IDEMPOTENCY_CONFLICT"));
+    }
 
     @Test
     void ownerCreatesDraftAndAggregatesCompleteRequestsIntoOneItem() throws Exception {

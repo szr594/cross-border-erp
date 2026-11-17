@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.procurement.remote-enabled",havingValue="false",matchIfMissing=true)
 @RequestMapping("/api/orders")
 public class OrderCommandController {
     private final OrderCommandService commandService;

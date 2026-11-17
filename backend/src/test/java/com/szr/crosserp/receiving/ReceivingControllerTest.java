@@ -52,6 +52,8 @@ class ReceivingControllerTest {
     @Autowired GoodsReceiptRepository receiptRepository;
     @Autowired InventoryLotRepository inventoryLotRepository;
     @Autowired InventoryMovementRepository inventoryMovementRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired jakarta.persistence.EntityManager entityManager;
 
     private User warehouse;
 
@@ -61,6 +63,40 @@ class ReceivingControllerTest {
         warehouse = userRepository.save(new User(
             "warehouse-" + suffix, "仓库员工", "not-used-in-this-test", false
         ));
+    }
+
+    @Test
+    void pendingBridgeOrderCannotRegisterPackage() throws Exception {
+        Fixture fixture=purchaseFixture(1);
+        hidePendingOrder(fixture);
+        mockMvc.perform(post("/api/domestic-packages").with(actor("WAREHOUSE"))
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                    {"purchaseOrderId":%d,"trackingNumber":"PENDING-%s","carrier":"SF"}
+                    """.formatted(fixture.order().getId(),fixture.suffix())))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.code").value("PURCHASE_OPERATION_PENDING"));
+        assertThat(packageRepository.count()).isZero();
+    }
+
+    @Test
+    void pendingBridgeOrderCannotPostReceiptOrInventory() throws Exception {
+        Fixture fixture=packageFixture(1);
+        hidePendingOrder(fixture);
+        mockMvc.perform(post("/api/domestic-packages/{packageId}/receipts",fixture.domesticPackage().getId())
+                .with(actor("WAREHOUSE")).contentType(MediaType.APPLICATION_JSON)
+                .content(receiptJson(fixture.item().getId(),1,0,"pending-"+fixture.suffix(),"待确认")))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.code").value("PURCHASE_OPERATION_PENDING"));
+        assertThat(receiptRepository.count()).isZero();
+        assertThat(inventoryLotRepository.count()).isZero();
+        assertThat(inventoryMovementRepository.count()).isZero();
+        assertThat(purchaseOrderItemRepository.findById(fixture.item().getId()).orElseThrow().getReceivedQuantity()).isZero();
+    }
+
+    private void hidePendingOrder(Fixture fixture){
+        entityManager.flush();
+        jdbc.update("update purchase_orders set bridge_confirmed=false where id=?",fixture.order().getId());
+        entityManager.clear();
     }
 
     @Test

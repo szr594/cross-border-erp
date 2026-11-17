@@ -19,6 +19,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
+@jakarta.persistence.EntityListeners(com.szr.crosserp.integration.orders.LegacyProjectionListener.class)
 @Table(name = "sales_orders")
 public class SalesOrder {
     @Id

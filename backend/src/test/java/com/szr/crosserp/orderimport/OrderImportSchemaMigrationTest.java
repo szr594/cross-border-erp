@@ -21,7 +21,7 @@ class OrderImportSchemaMigrationTest {
 
     @Test
     void versionEightCreatesOrderImportTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();
              ResultSet result = connection.getMetaData().getTables(null, null, "%", new String[] {"TABLE"})) {

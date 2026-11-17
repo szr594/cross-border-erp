@@ -137,6 +137,8 @@ public class DemoPurchaseOrderInitializer implements ApplicationRunner {
             "SELECT id FROM purchase_order_items WHERE purchase_order_id = ? ORDER BY id LIMIT 1",
             Long.class, purchaseOrderId
         );
+        new com.szr.crosserp.integration.orders.LegacyProjectionListener(jdbcTemplate).refreshOrder(
+            jdbcTemplate.queryForObject("select order_id from sales_order_items where id=?",Long.class,orderItemId));
         jdbcTemplate.update("""
             INSERT INTO purchase_order_allocations(purchase_order_item_id, procurement_request_id, allocated_quantity)
             SELECT ?, ?, ?
@@ -146,6 +148,7 @@ public class DemoPurchaseOrderInitializer implements ApplicationRunner {
             )
             """, purchaseOrderItemId, requestId, demo.quantity(), purchaseOrderItemId, requestId);
         jdbcTemplate.update("UPDATE order_procurement_requests SET status = 'CONVERTED' WHERE id = ?", requestId);
+        jdbcTemplate.update("UPDATE procurement_request_projections SET status='CONVERTED' WHERE request_id=?",requestId);
 
         seedEvent(purchaseOrderId, "CREATED", null, "DRAFT", ownerId, "演示采购单初始化", createdAt);
         if (!"DRAFT".equals(demo.status())) {

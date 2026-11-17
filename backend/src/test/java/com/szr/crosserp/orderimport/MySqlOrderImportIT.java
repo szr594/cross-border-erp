@@ -38,7 +38,7 @@ class MySqlOrderImportIT {
 
     @Test
     void mysql84MigratesAndConfirmsOneCsvBatchIdempotently() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("8");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 10);
         String login = "csv-mysql-" + suffix;
         jdbcTemplate.update("""

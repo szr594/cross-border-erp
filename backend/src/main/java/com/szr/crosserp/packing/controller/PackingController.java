@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController @RequestMapping("/api/packing")
 public class PackingController {
-    private final PackingQueryService query;private final PackingCommandService commands;
-    public PackingController(PackingQueryService query,PackingCommandService commands){this.query=query;this.commands=commands;}
+    private final PackingQueryService query;private final PackingCommandFacade commands;
+    public PackingController(PackingQueryService query,PackingCommandFacade commands){this.query=query;this.commands=commands;}
     @GetMapping("/tasks") TaskPage tasks(@RequestParam(required=false)String keyword,@RequestParam(required=false)String status){return query.findTasks(keyword,status);}
     @GetMapping("/orders/{orderId}") Detail detail(@PathVariable Long orderId){return query.findDetail(orderId);}
     @PostMapping("/orders/{orderId}/start") CommandResponse start(@PathVariable Long orderId,@RequestBody(required=false)StartRequest request,@AuthenticationPrincipal Jwt jwt){return commands.start(orderId,request,jwt.getSubject(),roles(jwt));}

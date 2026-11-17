@@ -10,6 +10,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.domain.Specification;
 
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long>, JpaSpecificationExecutor<SalesOrder> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select o from SalesOrder o where o.id=:id")
+    Optional<SalesOrder> findByIdForUpdate(Long id);
     Optional<SalesOrder> findByOrderNo(String orderNo);
     Optional<SalesOrder> findByStoreIdAndExternalOrderId(Long storeId, String externalOrderId);
 

@@ -62,3 +62,53 @@ export function getPurchaseOrderDetail(orderId: number) {
 export function getPurchaseOrderEvents(orderId: number, page = 1, size = 10) {
   return requestJson<PurchaseOrderEventPage>(`/api/purchase-orders/${orderId}/events?page=${page}&size=${size}`)
 }
+
+export interface CreatePurchaseOrderInput {
+  supplierId: number
+  currency: string
+  note?: string
+  items: {
+    supplierProductId?: string
+    supplierSku?: string
+    productName: string
+    variantName?: string
+    productUrl?: string
+    imageUrl?: string
+    unitPriceMinor: number | null
+    allocations: { procurementRequestId: number; quantity: number; version: number }[]
+  }[]
+}
+
+export interface PurchaseCreateResult {
+  id: number
+  purchaseOrderNo: string
+  supplierId: number
+  status: string
+  currency: string
+  totalAmountMinor: number
+  version: number
+  createdAt: string
+  items: {
+    id: number
+    supplierProductId: string | null
+    supplierSku: string | null
+    productName: string
+    variantName: string | null
+    purchasedQuantity: number
+    unitPriceMinor: number | null
+    currency: string
+    allocations: { id: number; procurementRequestId: number; allocatedQuantity: number }[]
+  }[]
+}
+
+/** Keep this operation object for all retries; create a new one only for a new user action. */
+export function preparePurchaseCreation(input: CreatePurchaseOrderInput, key = crypto.randomUUID()) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(key)) throw new Error('采购幂等键无效')
+  const body = JSON.stringify(structuredClone(input))
+  return {
+    key,
+    submit: () => requestJson<PurchaseCreateResult>('/api/purchase-orders', {
+      method: 'POST', headers: { 'Idempotency-Key': key }, body,
+    }),
+  }
+}

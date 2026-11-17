@@ -35,6 +35,9 @@ public class PurchaseOrder {
     @Column(nullable = false, length = 32)
     private PurchaseOrderStatus status = PurchaseOrderStatus.DRAFT;
 
+    @Column(name = "bridge_confirmed", nullable = false)
+    private boolean bridgeConfirmed = true;
+
     @Column(name = "external_order_no", length = 128)
     private String externalOrderNo;
 
@@ -104,6 +107,8 @@ public class PurchaseOrder {
     public String getPurchaseOrderNo() { return purchaseOrderNo; }
     public Supplier getSupplier() { return supplier; }
     public PurchaseOrderStatus getStatus() { return status; }
+    public boolean isBridgeConfirmed() { return bridgeConfirmed; }
+    public void awaitBridgeConfirmation() { bridgeConfirmed = false; }
     public String getExternalOrderNo() { return externalOrderNo; }
     public String getCurrency() { return currency; }
     public long getTotalAmountMinor() { return totalAmountMinor; }

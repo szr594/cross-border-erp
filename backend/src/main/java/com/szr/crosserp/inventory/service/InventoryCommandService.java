@@ -17,8 +17,8 @@ import com.szr.crosserp.inventory.repository.InventoryLotRepository;
 import com.szr.crosserp.inventory.repository.InventoryMovementRepository;
 import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.model.OrderItemFulfillmentStatus;
-import com.szr.crosserp.order.model.SalesOrderItem;
-import com.szr.crosserp.order.repository.SalesOrderItemRepository;
+import com.szr.crosserp.integration.orders.model.OrderItemProjection;
+import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
 import com.szr.crosserp.procurement.model.PurchaseOrderAllocation;
 import com.szr.crosserp.procurement.repository.PurchaseOrderAllocationRepository;
 import com.szr.crosserp.user.model.User;
@@ -33,13 +33,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InventoryCommandService {
+    @org.springframework.beans.factory.annotation.Autowired private com.szr.crosserp.integration.orders.OrderExecutionGate execution;
     private static final List<String> ALLOWED_ROLES = List.of("OWNER", "WAREHOUSE");
 
     private final InventoryLotRepository lotRepository;
     private final InventoryAllocationRepository allocationRepository;
     private final InventoryMovementRepository movementRepository;
     private final PurchaseOrderAllocationRepository purchaseAllocationRepository;
-    private final SalesOrderItemRepository orderItemRepository;
+    private final OrderItemProjectionRepository orderItemRepository;
     private final UserRepository userRepository;
 
     public InventoryCommandService(
@@ -47,7 +48,7 @@ public class InventoryCommandService {
         InventoryAllocationRepository allocationRepository,
         InventoryMovementRepository movementRepository,
         PurchaseOrderAllocationRepository purchaseAllocationRepository,
-        SalesOrderItemRepository orderItemRepository,
+        OrderItemProjectionRepository orderItemRepository,
         UserRepository userRepository
     ) {
         this.lotRepository = lotRepository;
@@ -75,8 +76,9 @@ public class InventoryCommandService {
             return response(duplicate.getInventoryLot(), duplicate.getAllocation(), duplicate);
         }
         assertVersion(lot.getVersion(), request.version());
-        SalesOrderItem orderItem = orderItemRepository.findByIdForUpdate(request.orderItemId())
+        OrderItemProjection orderItem = orderItemRepository.findByIdForUpdate(request.orderItemId())
             .orElseThrow(() -> notFound("订单明细不存在"));
+        execution.require(orderItem.getOrder().getId());
         if (orderItem.getFulfillmentStatus() != OrderItemFulfillmentStatus.NORMAL
             || orderItem.getOrder().getExternalStatus() == ExternalOrderStatus.CANCELED) {
             throw conflict("INVENTORY_ORDER_ITEM_UNAVAILABLE", "订单明细不可分配库存");
@@ -198,7 +200,7 @@ public class InventoryCommandService {
         return response(lot, null, movement);
     }
 
-    private PurchaseOrderAllocation requireSource(InventoryLot lot, SalesOrderItem orderItem, int quantity) {
+    private PurchaseOrderAllocation requireSource(InventoryLot lot, OrderItemProjection orderItem, int quantity) {
         List<PurchaseOrderAllocation> sources = purchaseAllocationRepository
             .findByPurchaseOrderItemIdIn(List.of(lot.getPurchaseOrderItem().getId())).stream()
             .filter(source -> source.getProcurementRequest().getOrderItem().getId().equals(orderItem.getId()))

@@ -171,6 +171,7 @@ public class PurchaseOrderQueryService {
 
     private PurchaseOrder requireOrder(Long orderId) {
         return orderRepository.findById(orderId)
+            .filter(PurchaseOrder::isBridgeConfirmed)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PURCHASE_ORDER_NOT_FOUND", "采购单不存在"));
     }
 

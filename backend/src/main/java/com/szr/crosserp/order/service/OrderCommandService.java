@@ -47,6 +47,7 @@ public class OrderCommandService {
     private final OrderStatusEventRepository eventRepository;
     private final UserRepository userRepository;
     private final InventoryOrderCancellationService inventoryCancellationService;
+    private final com.szr.crosserp.integration.orders.LegacyProjectionListener projections;
 
     public OrderCommandService(
         SalesOrderRepository orderRepository,
@@ -54,7 +55,8 @@ public class OrderCommandService {
         OrderProcurementRequestRepository requestRepository,
         OrderStatusEventRepository eventRepository,
         UserRepository userRepository,
-        InventoryOrderCancellationService inventoryCancellationService
+        InventoryOrderCancellationService inventoryCancellationService,
+        com.szr.crosserp.integration.orders.LegacyProjectionListener projections
     ) {
         this.orderRepository = orderRepository;
         this.itemRepository = itemRepository;
@@ -62,6 +64,7 @@ public class OrderCommandService {
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.inventoryCancellationService = inventoryCancellationService;
+        this.projections = projections;
     }
 
     @Transactional
@@ -234,8 +237,10 @@ public class OrderCommandService {
     }
 
     private SalesOrder requireOrder(Long orderId) {
-        return orderRepository.findById(orderId)
+        SalesOrder order=orderRepository.findByIdForUpdate(orderId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "订单不存在"));
+        projections.refreshOrder(orderId);
+        return order;
     }
 
     private OrderProcurementRequest requireRequest(Long requestId) {

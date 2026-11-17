@@ -1,0 +1,22 @@
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: simple
+  application:
+    name: order-service
+  datasource:
+    url: ${ORDER_DATABASE_URL}
+    username: ${ORDER_DATABASE_USER}
+    password: ${ORDER_DATABASE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+server:
+  port: ${ORDER_PORT:8082}
+app:
+  auth:
+    public-key: ${IDENTITY_PUBLIC_KEY}

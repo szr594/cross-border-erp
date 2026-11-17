@@ -5,7 +5,7 @@ import com.szr.crosserp.receiving.dto.ConfirmGoodsReceiptRequest;
 import com.szr.crosserp.receiving.dto.ConfirmGoodsReceiptResponse;
 import com.szr.crosserp.receiving.dto.CreateDomesticPackageRequest;
 import com.szr.crosserp.receiving.dto.DomesticPackageCommandResponse;
-import com.szr.crosserp.receiving.service.ReceivingCommandService;
+import com.szr.crosserp.receiving.service.ReceivingCommandFacade;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -21,9 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/domestic-packages")
 public class ReceivingCommandController {
-    private final ReceivingCommandService commandService;
+    private final ReceivingCommandFacade commandService;
 
-    public ReceivingCommandController(ReceivingCommandService commandService) {
+    public ReceivingCommandController(ReceivingCommandFacade commandService) {
         this.commandService = commandService;
     }
 

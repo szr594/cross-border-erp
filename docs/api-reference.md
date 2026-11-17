@@ -33,6 +33,8 @@ Authentication details and error behavior are defined in `auth-spec.md`.
 
 The complete contract, privacy rules, concurrency behavior, and status codes are defined in `order-api.md`. The implemented CSV template, limits, idempotency rules, and persistence boundary are defined in `order-import-spec.md`.
 
+独立 Order 已实现采购需求创建、撤回和取消命令，但生产路由尚未切换。新模式取消必须先完成库存释放；超时返回 `503 ORDER_CANCEL_PENDING`，重复原请求和原键继续恢复。可显式传入 `Idempotency-Key`，省略时由账号、订单、版本和原因派生稳定键。存在未释放的履约执行占用时同样返回可重试状态；已消耗库存仍返回 `409 ORDER_CANCEL_BLOCKED_BY_CONSUMED_INVENTORY`。
+
 ## Suppliers
 
 All authenticated employees can view supplier contact details. Only `OWNER` and `PROCUREMENT` can mutate supplier records.
@@ -55,6 +57,13 @@ All authenticated employees can view supplier contact details. Only `OWNER` and 
 | GET | `/api/purchase-orders/{purchaseOrderId}` | Return purchase-order detail and safe sales-order sources |
 | GET | `/api/purchase-orders/{purchaseOrderId}/events` | Page purchase-order events |
 
+采购桥接开启时，创建请求必须携带 `Idempotency-Key`。认领或确认结果未决时返回 `503 PURCHASE_OPERATION_PENDING`，使用原键及原请求重试；改变账号或请求内容返回 `409 PURCHASE_IDEMPOTENCY_CONFLICT`。
+远程认领确认前，本地采购单不计入列表及分页总数；直接访问详情或事件返回 `404 PURCHASE_ORDER_NOT_FOUND`。确认成功后，可见标记与操作成功状态在同一事务提交，重试返回最初的创建响应。普通采购单及已完成确认的历史采购单继续可用。桥接开关当前仍默认关闭。
+
+新模式下，采购来源、库存和打包关联本地订单/商品/采购需求投影。需求投影未就绪或未完成权威交接时返回 `503 PROCUREMENT_PROJECTION_NOT_READY`，保留认领并使用原键重试，不将其作为业务失败自动释放。分配、收货及打包在事务外取得 Order 的持久化执行占用；授权结果未知返回 `503 ORDER_EXECUTION_PENDING`，订单已取消或有取消屏障返回 `409 ORDER_EXECUTION_FORBIDDEN`。已成功命令的原幂等重放仍返回原结果。
+
+履约命令所需的订单投影尚未交接给 ORDER 权威时返回 `503 ORDER_PROJECTION_NOT_READY`，不执行远程占用或本地业务写入。
+
 ## Receiving
 
 All authenticated employees can view domestic packages and goods receipts. Only `OWNER` and `WAREHOUSE` can register packages, confirm receipts, or cancel a package that has no confirmed receipt.
@@ -71,6 +80,8 @@ All authenticated employees can view domestic packages and goods receipts. Only 
 | GET | `/api/goods-receipts/{receiptId}` | Return one immutable goods-receipt detail |
 
 The complete receiving contract, quantity semantics, idempotency behavior, and error codes are defined in `receiving-api.md`. The approved module boundary and database design are defined in `receiving-spec.md`.
+
+登记包裹或确认新收货批次时，如果对应采购单的远程认领尚未确认，返回 `503 PURCHASE_OPERATION_PENDING`，不写入包裹、收货、库存批次或库存流水。
 
 ## Inventory
 

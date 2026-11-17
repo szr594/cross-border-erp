@@ -9,9 +9,9 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface PackingTaskRepository extends JpaRepository<PackingTask,Long> {
-    @EntityGraph(attributePaths={"order","order.store","startedBy","completedBy"})
+    @EntityGraph(attributePaths={"order","startedBy","completedBy"})
     Optional<PackingTask> findByOrderId(Long orderId);
-    @EntityGraph(attributePaths={"order","order.store","startedBy","completedBy"})
+    @EntityGraph(attributePaths={"order","startedBy","completedBy"})
     List<PackingTask> findAllByOrderByStartedAtDesc();
     long countByStatus(PackingTaskStatus status);
     @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select task from PackingTask task where task.id=:id")

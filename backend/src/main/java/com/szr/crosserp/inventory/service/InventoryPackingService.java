@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class InventoryPackingService {
+    @org.springframework.beans.factory.annotation.Autowired private com.szr.crosserp.integration.orders.OrderExecutionGate execution;
     private final InventoryAllocationRepository allocations;
     private final InventoryLotRepository lots;
     private final InventoryMovementRepository movements;
@@ -25,6 +26,7 @@ public class InventoryPackingService {
         List<InventoryAllocation> locked=sortedAllocationIds.stream()
             .map(id->allocations.findByIdForUpdate(id).orElseThrow(()->conflict("PACKING_ALLOCATION_NOT_FOUND","库存分配不存在"))).toList();
         for(InventoryAllocation allocation:locked){
+            execution.require(allocation.getSalesOrderItem().getOrder().getId());
             if(allocation.getStatus()!=InventoryAllocationStatus.RESERVED) throw conflict("PACKING_ALLOCATION_NOT_RESERVED","仅预留库存可以用于打包");
             InventoryLot lot=lockedLots.get(allocation.getInventoryLot().getId());
             lot.consumeReservation(allocation.getQuantity()); allocation.consume();

@@ -9,7 +9,7 @@ import com.szr.crosserp.inventory.model.InventoryMovementType;
 import com.szr.crosserp.inventory.repository.InventoryAllocationRepository;
 import com.szr.crosserp.inventory.repository.InventoryLotRepository;
 import com.szr.crosserp.inventory.repository.InventoryMovementRepository;
-import com.szr.crosserp.order.repository.SalesOrderItemRepository;
+import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
 import com.szr.crosserp.user.model.User;
 import java.time.Instant;
 import java.util.Comparator;
@@ -28,13 +28,13 @@ public class InventoryOrderCancellationService {
     private final InventoryLotRepository lotRepository;
     private final InventoryAllocationRepository allocationRepository;
     private final InventoryMovementRepository movementRepository;
-    private final SalesOrderItemRepository orderItemRepository;
+    private final OrderItemProjectionRepository orderItemRepository;
 
     public InventoryOrderCancellationService(
         InventoryLotRepository lotRepository,
         InventoryAllocationRepository allocationRepository,
         InventoryMovementRepository movementRepository,
-        SalesOrderItemRepository orderItemRepository
+        OrderItemProjectionRepository orderItemRepository
     ) {
         this.lotRepository = lotRepository;
         this.allocationRepository = allocationRepository;

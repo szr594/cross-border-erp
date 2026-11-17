@@ -1,0 +1,25 @@
+package com.szr.crosserp.orderservice.order.repository;
+
+import com.szr.crosserp.orderservice.order.model.OrderProcurementRequest;
+import com.szr.crosserp.orderservice.order.model.ProcurementRequestStatus;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface OrderProcurementRequestRepository extends JpaRepository<OrderProcurementRequest, Long> {
+    List<OrderProcurementRequest> findByOrderItemIdAndStatus(Long orderItemId, ProcurementRequestStatus status);
+    List<OrderProcurementRequest> findByOrderItemIdIn(List<Long> orderItemIds);
+
+    @EntityGraph(attributePaths = {"orderItem", "requestedBy", "withdrawnBy"})
+    Page<OrderProcurementRequest> findByOrderItemOrderId(Long orderId, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT request FROM OrderProcurementRequest request WHERE request.id IN :ids")
+    List<OrderProcurementRequest> findAllForUpdateByIdIn(@Param("ids") List<Long> ids);
+}

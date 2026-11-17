@@ -1,0 +1,66 @@
+# Shadow deployment: deliberately does not override gateway routes or legacy backend.
+services:
+  order-mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cross_erp_order
+      MYSQL_USER: order_app
+      MYSQL_PASSWORD: ${ORDER_DATABASE_PASSWORD:?Set ORDER_DATABASE_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${ORDER_MYSQL_ROOT_PASSWORD:?Set ORDER_MYSQL_ROOT_PASSWORD}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
+    volumes:
+      - order_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u order_app cross_erp_order -e 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    hostname: cross-erp-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  order:
+    image: cross-border-erp-production-order:latest
+    build:
+      context: .
+      dockerfile: services/order-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      ORDER_DATABASE_URL: jdbc:mysql://order-mysql:3306/cross_erp_order?connectionTimeZone=UTC
+      ORDER_DATABASE_USER: order_app
+      ORDER_DATABASE_PASSWORD: ${ORDER_DATABASE_PASSWORD:?Set ORDER_DATABASE_PASSWORD}
+      IDENTITY_PUBLIC_KEY: file:/run/keys/public.pem
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+      APP_EVENTS_ENABLED: 'true'
+    volumes:
+      - ${IDENTITY_KEYS_DIR:?Set IDENTITY_KEYS_DIR}/public.pem:/run/keys/public.pem:ro
+    depends_on:
+      order-mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://127.0.0.1:8082/api/order-imports/health-probe 2>&1 | grep -q '401'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+volumes:
+  order_mysql_data:
+  rabbitmq_data:

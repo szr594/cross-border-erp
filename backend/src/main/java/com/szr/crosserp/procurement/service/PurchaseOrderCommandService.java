@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PurchaseOrderCommandService {
+    @org.springframework.beans.factory.annotation.Autowired private com.szr.crosserp.integration.orders.LegacyProjectionListener legacy;
     private static final Set<String> WRITE_ROLES = Set.of("OWNER", "PROCUREMENT");
     private static final DateTimeFormatter NUMBER_DATE = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC);
 
@@ -50,6 +51,7 @@ public class PurchaseOrderCommandService {
     private final PurchaseOrderEventRepository eventRepository;
     private final OrderProcurementRequestRepository requestRepository;
     private final UserRepository userRepository;
+    private final com.szr.crosserp.integration.orders.ProcurementRequestProjectionRepository projections;
 
     public PurchaseOrderCommandService(
         SupplierRepository supplierRepository,
@@ -58,7 +60,8 @@ public class PurchaseOrderCommandService {
         PurchaseOrderAllocationRepository allocationRepository,
         PurchaseOrderEventRepository eventRepository,
         OrderProcurementRequestRepository requestRepository,
-        UserRepository userRepository
+        UserRepository userRepository,
+        com.szr.crosserp.integration.orders.ProcurementRequestProjectionRepository projections
     ) {
         this.supplierRepository = supplierRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
@@ -67,12 +70,22 @@ public class PurchaseOrderCommandService {
         this.eventRepository = eventRepository;
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
+        this.projections = projections;
     }
 
     @Transactional
     public PurchaseOrderCommandResponse create(
         CreatePurchaseOrderRequest command, String subject, List<String> roles
     ) {
+        return createInternal(command,subject,roles,false);
+    }
+
+    @Transactional
+    public PurchaseOrderCommandResponse createClaimed(CreatePurchaseOrderRequest command,String subject,List<String> roles) {
+        return createInternal(command,subject,roles,true);
+    }
+
+    private PurchaseOrderCommandResponse createInternal(CreatePurchaseOrderRequest command,String subject,List<String> roles,boolean remoteClaimed) {
         requireWriteRole(roles);
         User actor = requireActor(subject);
         Supplier supplier = supplierRepository.findById(command.supplierId())
@@ -88,20 +101,35 @@ public class PurchaseOrderCommandService {
         if (allocationCommands.stream().anyMatch(allocation -> !requestIds.add(allocation.procurementRequestId()))) {
             throw invalidAllocation("采购需求不能重复分配");
         }
-        List<OrderProcurementRequest> requests = requestRepository.findAllForUpdateByIdIn(List.copyOf(requestIds));
-        if (requests.size() != requestIds.size()) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "PROCUREMENT_REQUEST_NOT_FOUND", "采购需求不存在");
-        }
+        List<OrderProcurementRequest> requests = remoteClaimed ? List.of() : requestRepository.findAllForUpdateByIdIn(List.copyOf(requestIds));
         Map<Long, OrderProcurementRequest> requestsById = new HashMap<>();
         requests.forEach(request -> requestsById.put(request.getId(), request));
-        validateAllocations(allocationCommands, requestsById);
+        Map<Long,com.szr.crosserp.integration.orders.model.ProcurementRequestProjection> sources=new HashMap<>();
+        if(remoteClaimed){
+            projections.findAllForUpdateByIdIn(List.copyOf(requestIds)).forEach(p->sources.put(p.getId(),p));
+            for(var allocation:allocationCommands){
+                var projection=sources.get(allocation.procurementRequestId());
+                if(projection==null || projection.getStatus()!=ProcurementRequestStatus.REQUESTED
+                    || !"ORDER".equals(projection.getOrderItem().getOrder().getAuthority())
+                    || projection.getVersion()!=allocation.version() || projection.getRequestedQuantity()!=allocation.quantity())
+                    throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"PROCUREMENT_PROJECTION_NOT_READY","采购需求投影尚未就绪，请使用原幂等键重试");
+            }
+        }else{
+            if(requests.size()!=requestIds.size())throw new ApiException(HttpStatus.NOT_FOUND,"PROCUREMENT_REQUEST_NOT_FOUND","采购需求不存在");
+            validateAllocations(allocationCommands, requestsById);
+            requests.forEach(r->{legacy.project(r);sources.put(r.getId(),com.szr.crosserp.integration.orders.model.ProcurementRequestProjection.fromLegacy(r));});
+        }
 
         String currency = command.currency().toUpperCase(Locale.ROOT);
         long totalAmountMinor = calculateTotal(command.items());
         Instant now = Instant.now();
-        PurchaseOrder purchaseOrder = purchaseOrderRepository.save(new PurchaseOrder(
+        PurchaseOrder purchaseOrder = new PurchaseOrder(
             purchaseOrderNo(now), supplier, currency, totalAmountMinor, actor, normalize(command.note())
-        ));
+        );
+        if (remoteClaimed) {
+            purchaseOrder.awaitBridgeConfirmation();
+        }
+        purchaseOrder = purchaseOrderRepository.save(purchaseOrder);
         List<PurchaseOrderItemResponse> itemResponses = new ArrayList<>();
         for (CreatePurchaseOrderItemCommand itemCommand : command.items()) {
             int purchasedQuantity = itemCommand.allocations().stream()
@@ -121,14 +149,16 @@ public class PurchaseOrderCommandService {
             ));
             List<PurchaseOrderAllocation> allocations = itemCommand.allocations().stream()
                 .map(allocation -> new PurchaseOrderAllocation(
-                    item, requestsById.get(allocation.procurementRequestId()), allocation.quantity()
+                    item, sources.get(allocation.procurementRequestId()), allocation.quantity()
                 ))
                 .toList();
             allocationRepository.saveAll(allocations);
             itemResponses.add(itemResponse(item, allocations));
         }
-        requests.forEach(OrderProcurementRequest::convert);
-        requestRepository.saveAllAndFlush(requests);
+        if(!remoteClaimed) {
+            requests.forEach(OrderProcurementRequest::convert);
+            requestRepository.saveAllAndFlush(requests);
+        }
         eventRepository.save(new PurchaseOrderEvent(purchaseOrder, "CREATED", actor, normalize(command.note()), now));
         purchaseOrderRepository.flush();
         return new PurchaseOrderCommandResponse(

@@ -5,7 +5,7 @@ import com.szr.crosserp.inventory.dto.InventoryCommandResponse;
 import com.szr.crosserp.inventory.dto.ManualInventoryAllocationRequest;
 import com.szr.crosserp.inventory.dto.ReleaseInventoryAllocationRequest;
 import com.szr.crosserp.inventory.dto.ReleaseQuarantineRequest;
-import com.szr.crosserp.inventory.service.InventoryCommandService;
+import com.szr.crosserp.inventory.service.InventoryCommandFacade;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/inventory")
 public class InventoryCommandController {
-    private final InventoryCommandService commandService;
+    private final InventoryCommandFacade commandService;
 
-    public InventoryCommandController(InventoryCommandService commandService) {
+    public InventoryCommandController(InventoryCommandFacade commandService) {
         this.commandService = commandService;
     }
 

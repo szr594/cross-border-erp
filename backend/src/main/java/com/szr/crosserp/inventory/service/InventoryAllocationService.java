@@ -11,8 +11,8 @@ import com.szr.crosserp.inventory.repository.InventoryLotRepository;
 import com.szr.crosserp.inventory.repository.InventoryMovementRepository;
 import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.model.OrderItemFulfillmentStatus;
-import com.szr.crosserp.order.model.SalesOrderItem;
-import com.szr.crosserp.order.repository.SalesOrderItemRepository;
+import com.szr.crosserp.integration.orders.model.OrderItemProjection;
+import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
 import com.szr.crosserp.procurement.model.PurchaseOrderAllocation;
 import com.szr.crosserp.procurement.repository.PurchaseOrderAllocationRepository;
 import com.szr.crosserp.user.model.User;
@@ -24,18 +24,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class InventoryAllocationService {
+    @org.springframework.beans.factory.annotation.Autowired private com.szr.crosserp.integration.orders.OrderExecutionGate execution;
     private final InventoryLotRepository lotRepository;
     private final InventoryAllocationRepository allocationRepository;
     private final InventoryMovementRepository movementRepository;
     private final PurchaseOrderAllocationRepository purchaseAllocationRepository;
-    private final SalesOrderItemRepository salesOrderItemRepository;
+    private final OrderItemProjectionRepository salesOrderItemRepository;
 
     public InventoryAllocationService(
         InventoryLotRepository lotRepository,
         InventoryAllocationRepository allocationRepository,
         InventoryMovementRepository movementRepository,
         PurchaseOrderAllocationRepository purchaseAllocationRepository,
-        SalesOrderItemRepository salesOrderItemRepository
+        OrderItemProjectionRepository salesOrderItemRepository
     ) {
         this.lotRepository = lotRepository;
         this.allocationRepository = allocationRepository;
@@ -65,9 +66,10 @@ public class InventoryAllocationService {
             ).isPresent()) {
                 continue;
             }
-            SalesOrderItem orderItem = salesOrderItemRepository.findByIdForUpdate(
+            OrderItemProjection orderItem = salesOrderItemRepository.findByIdForUpdate(
                 source.getProcurementRequest().getOrderItem().getId()
             ).orElseThrow();
+            execution.require(orderItem.getOrder().getId());
             if (orderItem.getFulfillmentStatus() != OrderItemFulfillmentStatus.NORMAL
                 || orderItem.getOrder().getExternalStatus() == ExternalOrderStatus.CANCELED) {
                 continue;

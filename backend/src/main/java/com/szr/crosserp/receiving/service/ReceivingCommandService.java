@@ -95,6 +95,7 @@ public class ReceivingCommandService {
         User actor = requireActor(subject);
         PurchaseOrder order = purchaseOrderRepository.findById(command.purchaseOrderId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PURCHASE_ORDER_NOT_FOUND", "采购单不存在"));
+        requireBridgeConfirmed(order);
         if (!RECEIVABLE_STATUSES.contains(order.getStatus())) {
             throw notReceivable();
         }
@@ -139,6 +140,7 @@ public class ReceivingCommandService {
         }
         PurchaseOrder order = purchaseOrderRepository.findByIdForUpdate(domesticPackage.getPurchaseOrder().getId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PURCHASE_ORDER_NOT_FOUND", "采购单不存在"));
+        requireBridgeConfirmed(order);
         if (!RECEIVABLE_STATUSES.contains(order.getStatus())) {
             throw notReceivable();
         }
@@ -335,6 +337,12 @@ public class ReceivingCommandService {
     private String normalizeForHash(String value) { return value == null ? "" : value.trim(); }
     private ApiException invalid(String message) { return new ApiException(HttpStatus.BAD_REQUEST, "RECEIPT_INVALID", message); }
     private ApiException conflict(String code, String message) { return new ApiException(HttpStatus.CONFLICT, code, message); }
+    private void requireBridgeConfirmed(PurchaseOrder order) {
+        if (!order.isBridgeConfirmed()) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "PURCHASE_OPERATION_PENDING", "采购认领尚未确认，请稍后重试");
+        }
+    }
+
     private ApiException notReceivable() {
         return conflict("PURCHASE_ORDER_NOT_RECEIVABLE", "采购单当前状态不允许收货");
     }

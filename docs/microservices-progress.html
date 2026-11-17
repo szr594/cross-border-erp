@@ -360,7 +360,7 @@
         <h2>任务清单</h2>
         <p>完成标志以代码、文档和实际验证结果为准。</p>
       </div>
-      <div class="updated-at">最近更新：2026-11-16</div>
+      <div class="updated-at">最近更新：2026-11-17</div>
     </header>
 
     <div class="table-wrap">
@@ -446,8 +446,26 @@
           <td>业务迁移</td>
           <td class="task-name">订单与 CSV 导入服务</td>
           <td class="acceptance">订单查询、命令、履约阶段、事件和 CSV 导入迁移完成，API 契约保持兼容。</td>
-          <td><span class="status pending">未开始</span></td>
+          <td><span class="status pending">投影与履约关联本地验收完成；完整查询、其余命令和生产路由待切换</span></td>
           <td class="date">—</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-08-P1</td>
+          <td>订单迁移</td>
+          <td class="task-name">采购需求投影与历史关联替换</td>
+          <td class="acceptance">需求版本事件、Inbox 去重、采购来源及库存/打包四类关联替换；历史 ID 回填与冲突预检。</td>
+          <td><span class="status done">✓ 本地验收完成</span></td>
+          <td class="date">2026-11-17</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-08-P2</td>
+          <td>一致性验证</td>
+          <td class="task-name">权威执行占用与同步取消</td>
+          <td class="acceptance">真实 MySQL/RabbitMQ/HTTP 履约、认领撤回互斥、取消释放及进程重启恢复；虚拟机未升级。</td>
+          <td><span class="status done">✓ 本地验收完成</span></td>
+          <td class="date">2026-11-17</td>
         </tr>
         <tr data-status="pending">
           <td><span class="check" aria-label="未完成">✓</span></td>

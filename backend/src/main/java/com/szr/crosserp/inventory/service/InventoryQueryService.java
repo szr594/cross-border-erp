@@ -24,10 +24,10 @@ import com.szr.crosserp.inventory.repository.InventoryLotRepository;
 import com.szr.crosserp.inventory.repository.InventoryLotSpecifications;
 import com.szr.crosserp.inventory.repository.InventoryMovementRepository;
 import com.szr.crosserp.order.dto.UserSummaryResponse;
-import com.szr.crosserp.order.model.SalesOrder;
-import com.szr.crosserp.order.model.SalesOrderItem;
-import com.szr.crosserp.order.repository.SalesOrderItemRepository;
-import com.szr.crosserp.order.repository.SalesOrderRepository;
+import com.szr.crosserp.integration.orders.model.OrderProjection;
+import com.szr.crosserp.integration.orders.model.OrderItemProjection;
+import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
+import com.szr.crosserp.integration.orders.OrderProjectionRepository;
 import com.szr.crosserp.procurement.model.PurchaseOrder;
 import com.szr.crosserp.procurement.model.PurchaseOrderItem;
 import com.szr.crosserp.receiving.model.DomesticPackage;
@@ -49,15 +49,15 @@ public class InventoryQueryService {
     private final InventoryLotRepository lotRepository;
     private final InventoryAllocationRepository allocationRepository;
     private final InventoryMovementRepository movementRepository;
-    private final SalesOrderRepository salesOrderRepository;
-    private final SalesOrderItemRepository salesOrderItemRepository;
+    private final OrderProjectionRepository salesOrderRepository;
+    private final OrderItemProjectionRepository salesOrderItemRepository;
 
     public InventoryQueryService(
         InventoryLotRepository lotRepository,
         InventoryAllocationRepository allocationRepository,
         InventoryMovementRepository movementRepository,
-        SalesOrderRepository salesOrderRepository,
-        SalesOrderItemRepository salesOrderItemRepository
+        OrderProjectionRepository salesOrderRepository,
+        OrderItemProjectionRepository salesOrderItemRepository
     ) {
         this.lotRepository = lotRepository;
         this.allocationRepository = allocationRepository;
@@ -137,11 +137,11 @@ public class InventoryQueryService {
     }
 
     public OrderInventoryCoverageResponse findOrderCoverage(Long orderId) {
-        SalesOrder order = salesOrderRepository.findById(orderId).orElseThrow(() ->
+        OrderProjection order = salesOrderRepository.findById(orderId).orElseThrow(() ->
             new ApiException(HttpStatus.NOT_FOUND, "ORDER_NOT_FOUND", "订单不存在")
         );
-        List<SalesOrderItem> items = salesOrderItemRepository.findByOrderIdOrderByIdAsc(orderId);
-        List<Long> itemIds = items.stream().map(SalesOrderItem::getId).toList();
+        List<OrderItemProjection> items = salesOrderItemRepository.findByOrderIdOrderByIdAsc(orderId);
+        List<Long> itemIds = items.stream().map(OrderItemProjection::getId).toList();
         Map<Long, List<InventoryAllocation>> allocationsByItem = new HashMap<>();
         if (!itemIds.isEmpty()) {
             allocationRepository.findBySalesOrderItemIdInOrderByIdAsc(itemIds).forEach(allocation ->
@@ -193,7 +193,7 @@ public class InventoryQueryService {
     }
 
     private InventoryAllocationResponse allocation(InventoryAllocation allocation) {
-        SalesOrderItem item = allocation.getSalesOrderItem();
+        OrderItemProjection item = allocation.getSalesOrderItem();
         return new InventoryAllocationResponse(
             allocation.getId(), allocation.getAllocationNo(), allocation.getInventoryLot().getId(),
             allocation.getInventoryLot().getLotNo(), item.getOrder().getId(), item.getOrder().getOrderNo(),

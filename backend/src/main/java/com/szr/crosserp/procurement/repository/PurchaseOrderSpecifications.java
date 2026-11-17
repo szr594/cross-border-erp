@@ -11,6 +11,7 @@ public final class PurchaseOrderSpecifications {
     public static Specification<PurchaseOrder> from(PurchaseOrderQuery query) {
         return (root, criteriaQuery, builder) -> {
             var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            predicates.add(builder.isTrue(root.get("bridgeConfirmed")));
             if (query.keyword() != null && !query.keyword().isBlank()) {
                 String pattern = "%" + query.keyword().trim().toLowerCase() + "%";
                 predicates.add(builder.or(
