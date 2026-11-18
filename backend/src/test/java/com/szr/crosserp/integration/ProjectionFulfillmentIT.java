@@ -113,8 +113,11 @@ class ProjectionFulfillmentIT {
         assertThat(ok(send(backendBase(),"POST","/api/purchase-orders",command,key,false),201)).isEqualTo(response);
         long id=response.path("id").asLong();
         assertThat(backend.queryForObject("select bridge_confirmed from purchase_orders where id=?",Boolean.class,id)).isTrue();
-        // Ordering with the supplier is outside the existing MVP command API: establish its test precondition.
-        backend.update("update purchase_orders set status='ORDERED' where id=?",id);
+        var ordered=ok(send(backendBase(),"POST","/api/purchase-orders/"+id+"/confirm-order",
+            Map.of("version",response.path("version").asLong()),null,false),200);
+        assertThat(ordered.path("status").asText()).isEqualTo("ORDERED");
+        assertThat(ok(send(backendBase(),"POST","/api/purchase-orders/"+id+"/confirm-order",
+            Map.of("version",response.path("version").asLong()),null,false),200)).isEqualTo(ordered);
         await(()->"CONVERTED".equals(backend.queryForObject("select status from procurement_request_projections where request_id=?",String.class,request)));
         return id;
     }
@@ -127,6 +130,11 @@ class ProjectionFulfillmentIT {
     }
     @Test @Order(1) void csvToProcurementReceiptInventoryAndPackingUsesNoLegacyOrders() throws Exception {
         long order=imported("packed"),request=requested(order),purchase=purchased(request);received(purchase);
+        var orderDetail=ok(send(sourceBase(),"GET","/api/orders/"+order,null,null,false),200);
+        assertThat(orderDetail.path("stage").asText()).isEqualTo("READY_FOR_PACKING");
+        assertThat(orderDetail.path("items").get(0).path("inventoryAllocatedQuantity").asInt()).isEqualTo(2);
+        var readyPage=ok(send(sourceBase(),"GET","/api/orders?stage=READY_FOR_PACKING",null,null,false),200);
+        assertThat(readyPage.path("totalElements").asInt()).isGreaterThanOrEqualTo(1);
         var detail=ok(send(backendBase(),"GET","/api/packing/orders/"+order,null,null,false),200);
         assertThat(detail.path("availableActions").toString()).contains("START");
         var started=ok(send(backendBase(),"POST","/api/packing/orders/"+order+"/start",Map.of("reason","test"),null,false),200);
@@ -135,6 +143,7 @@ class ProjectionFulfillmentIT {
         var input=Map.of("idempotencyKey","packed-"+order,"version",boxed.path("version").asLong());
         var completed=ok(send(backendBase(),"POST","/api/packing/tasks/"+task+"/complete",input,null,false),200);
         assertThat(completed.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(ok(send(sourceBase(),"GET","/api/orders/"+order+"/fulfillment",null,null,false),200).path("stage").asText()).isEqualTo("PACKED");
         assertThat(ok(send(backendBase(),"POST","/api/packing/tasks/"+task+"/complete",input,null,false),200)).isEqualTo(completed);
         assertThat(backend.queryForObject("select consumed_quantity from inventory_lots where purchase_order_item_id=(select id from purchase_order_items where purchase_order_id=?)",Integer.class,purchase)).isEqualTo(2);
         var cancel=send(sourceBase(),"POST","/api/orders/"+order+"/cancel",Map.of("version",1,"reason","consumed test"),"cancel-packed",false);

@@ -112,3 +112,9 @@ export function preparePurchaseCreation(input: CreatePurchaseOrderInput, key = c
     }),
   }
 }
+
+export function confirmPurchaseOrder(id: number, version: number) {
+  return requestJson<{ id: number; status: string; version: number; orderedAt: string }>(`/api/purchase-orders/${id}/confirm-order`, {
+    method: 'POST', body: JSON.stringify({ version }),
+  })
+}

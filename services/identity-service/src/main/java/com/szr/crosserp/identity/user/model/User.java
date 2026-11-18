@@ -73,6 +73,7 @@ public class User {
         this.mustChangePassword = mustChangePassword;
     }
 
+    public Instant getUpdatedAt() { return updatedAt; }
     public Long getId() { return id; }
     public String getLoginName() { return loginName; }
     public String getDisplayName() { return displayName; }

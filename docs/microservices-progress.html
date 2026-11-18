@@ -440,14 +440,14 @@
           <td><span class="status done">✓ 已完成</span></td>
           <td class="date">2026-11-16</td>
         </tr>
-        <tr data-status="pending">
-          <td><span class="check" aria-label="未完成">✓</span></td>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
           <td class="task-id">MS-08</td>
           <td>业务迁移</td>
           <td class="task-name">订单与 CSV 导入服务</td>
           <td class="acceptance">订单查询、命令、履约阶段、事件和 CSV 导入迁移完成，API 契约保持兼容。</td>
-          <td><span class="status pending">投影与履约关联本地验收完成；完整查询、其余命令和生产路由待切换</span></td>
-          <td class="date">—</td>
+          <td><span class="status done">✓ 已完成：虚拟机正式切换与带数据验收通过</span></td>
+          <td class="date">2026-11-18</td>
         </tr>
         <tr data-status="done">
           <td><span class="check" aria-label="已完成">✓</span></td>
@@ -457,6 +457,15 @@
           <td class="acceptance">需求版本事件、Inbox 去重、采购来源及库存/打包四类关联替换；历史 ID 回填与冲突预检。</td>
           <td><span class="status done">✓ 本地验收完成</span></td>
           <td class="date">2026-11-17</td>
+        </tr>
+        <tr data-status="done">
+          <td><span class="check" aria-label="已完成">✓</span></td>
+          <td class="task-id">MS-08-VM</td>
+          <td>部署演练</td>
+          <td class="task-name">虚拟机空库路由切换与回退</td>
+          <td class="acceptance">新网关登录与查询返回 200；回退原镜像及配置后页面验收通过。未执行虚拟机数据库覆盖恢复或带数据履约。</td>
+          <td><span class="status done">✓ 演练通过，当前已回退</span></td>
+          <td class="date">2026-11-18</td>
         </tr>
         <tr data-status="done">
           <td><span class="check" aria-label="已完成">✓</span></td>
@@ -557,7 +566,8 @@
           <td><span class="status pending">未开始</span></td>
           <td class="date">—</td>
         </tr>
-        </tbody>
+        <tr data-status="done"><td><span class="check" aria-label="已完成">✓</span></td><td class="task-id">PO-ORDER-RECEIVE</td><td>业务验收</td><td class="task-name">采购确认下单与浏览器收货</td><td class="acceptance">真实MySQL并发3项通过；浏览器下单、登记包裹、合格4件收货通过，落库RECEIVED/入库4件。虚拟机部署待执行。</td><td><span class="status done">✓ 本地验收完成</span></td><td class="date">2026-11-18</td></tr>
+</tbody>
       </table>
     </div>
   </section>

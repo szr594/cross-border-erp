@@ -124,6 +124,13 @@ public class PurchaseOrder {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
+    public void confirmOrdered(User actor, Instant now) {
+        if (status != PurchaseOrderStatus.DRAFT) throw new IllegalStateException("Only draft can be ordered");
+        status = PurchaseOrderStatus.ORDERED;
+        orderedBy = actor;
+        orderedAt = now;
+    }
+
     public void updateReceivingStatus(boolean anyInspected, boolean allInspected) {
         if (status == PurchaseOrderStatus.CANCELED || status == PurchaseOrderStatus.COMPLETED) {
             throw new IllegalStateException("purchase order cannot receive goods in current status");

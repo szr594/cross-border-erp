@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { RefreshRight, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus/es/components/message/index.mjs'
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
+import { authState } from '@/api/auth'
+import PurchaseCreateForm from '@/components/procurement/PurchaseCreateForm.vue'
 import { useRouter } from 'vue-router'
 
 import { ApiError } from '@/api/http'
@@ -9,6 +11,9 @@ import { getPurchaseOrders, type PurchaseOrderListItem, type PurchaseOrderPage }
 import PurchaseOrderStatusTag from '@/components/procurement/PurchaseOrderStatusTag.vue'
 
 const router = useRouter()
+const createVisible = ref(false)
+const canCreate = computed(() => authState.user?.roles.some(role => ['OWNER', 'PROCUREMENT'].includes(role)) ?? false)
+function created(id: number) { createVisible.value = false; void router.push({ name: 'purchase-order-detail', params: { purchaseOrderId: id } }) }
 const loading = ref(false)
 const pageData = ref<PurchaseOrderPage | null>(null)
 const filters = reactive({ page: 1, size: 20, keyword: '', status: '', sort: 'createdAt,desc' })
@@ -49,8 +54,10 @@ onMounted(() => { void loadOrders() })
 
 <template>
   <section class="purchase-workbench">
+    <el-dialog v-model="createVisible" title="认领需求 / 创建采购单" width="min(680px, 94vw)" :close-on-click-modal="false" destroy-on-close><PurchaseCreateForm v-if="createVisible" @created="created" /></el-dialog>
     <header class="workbench-intro">
       <div><span class="section-kicker">PURCHASE OPERATIONS</span><h2>采购单工作台</h2><p>集中查看供应商订单、采购数量和到货进度，追踪每一笔采购来源。</p></div>
+      <el-button v-if="canCreate" type="primary" @click="createVisible = true">创建采购单</el-button>
       <el-button :icon="RefreshRight" :loading="loading" @click="loadOrders">刷新数据</el-button>
     </header>
     <section class="filter-panel" aria-label="采购单筛选">

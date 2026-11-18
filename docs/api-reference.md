@@ -124,3 +124,11 @@ All authenticated employees can view the packing workbench and task detail. Only
 Packing completion requires a unique idempotency key and the current task version. Every order quantity and every active inventory allocation must be represented exactly once across its boxes. Completion changes allocations from `RESERVED` to `CONSUMED`, updates lot balances, and appends one `PACKING_CONSUMED` movement per allocation in the same transaction. Completed tasks are immutable and are not reversible in the first packing phase. See `packing-spec.md`.
 
 CSV order import completes the approved MVP module set. The public project exposes only endpoints required by that MVP.
+
+### 演示店铺初始化（保留单体模式）
+
+`POST /api/stores/demo/initialize`，无请求体。需要有效 JWT 且 roles 包含 OWNER。返回 200：channelId、storeId、code、name、status。创建启用的 DEMO 渠道与 ACTIVE 的 DEMO-STORE 店铺；重复调用保留原 ID，已停用的对应演示店铺重新启用。不会创建订单或修改其他店铺。同编码店铺若渠道或外部标识不同，返回 409 DEMO_STORE_CONFLICT；非老板返回 403，匿名返回 401。启用远程采购/订单权威模式时不注册该入口，避免两库分别创建店铺。迁移时保留渠道和店铺原 ID。
+
+### 采购草稿确认下单
+
+POST /api/purchase-orders/{id}/confirm-order，请求 {"version":0}。仅 OWNER、PROCUREMENT 可调用。校验有效本地用户、采购认领已确认、采购单版本和 DRAFT 状态，在采购单行锁内转为 ORDERED，记录 ordered_by、ordered_at 以及 ORDERED 事件。返回 id、status、version、orderedAt。同一操作人以原版本重复提交，在采购单仍为 ORDERED 且版本恰为原版本加一时返回成功，不重复写事件；状态继续变化、其他操作人或旧版本返回冲突。该操作仅登记已向供应商下单的事实，不调用第三方支付或采购平台。不新增数据表。

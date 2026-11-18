@@ -58,6 +58,36 @@ class MySqlPurchaseOrderCommandConcurrencyIT {
         )).isEqualTo("CONVERTED");
     }
 
+    @Test
+    void concurrentOrderingRetriesOnlyTransitionAndAuditOnce() throws Exception { orderingRace(false); }
+    @Test
+    void differentOrderingActorsCannotBothConfirmTheSameVersion() throws Exception { orderingRace(true); }
+    private void orderingRace(boolean differentActors) throws Exception {
+        String suffix=UUID.randomUUID().toString().replace("-", "").substring(0,8);
+        Long actor=insertActor(suffix), second=differentActors?insertActor(suffix+"b"):actor;
+        Long supplier=insertSupplier(suffix);
+        String number="ORDER-RACE-"+suffix;
+        jdbcTemplate.update("insert into purchase_orders(purchase_order_no,supplier_id,status,currency,created_by) values(?,?,'DRAFT','CNY',?)",number,supplier,actor);
+        Long id=jdbcTemplate.queryForObject("select id from purchase_orders where purchase_order_no=?",Long.class,number);
+        var pool=Executors.newFixedThreadPool(2);var start=new CountDownLatch(1);
+        try {
+            List<Future<Integer>> results=new ArrayList<>();
+            for(Long user:List.of(actor,second))results.add(pool.submit(()->{
+                start.await();return mockMvc.perform(post("/api/purchase-orders/"+id+"/confirm-order")
+                    .with(jwt().jwt(j->j.subject(user.toString()).claim("roles",List.of("PROCUREMENT"))))
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"version\":0}"))
+                    .andReturn().getResponse().getStatus();
+            }));
+            start.countDown();var statuses=new ArrayList<Integer>();
+            for(var result:results)statuses.add(result.get(30,java.util.concurrent.TimeUnit.SECONDS));
+            if(differentActors)assertThat(statuses).containsExactlyInAnyOrder(200,409);
+            else assertThat(statuses).containsExactly(200,200);
+            assertThat(jdbcTemplate.queryForObject("select version from purchase_orders where id=?",Long.class,id)).isEqualTo(1);
+            assertThat(jdbcTemplate.queryForObject("select count(*) from purchase_order_events where purchase_order_id=? and event_type='ORDERED'",Long.class,id)).isEqualTo(1);
+            assertThat(jdbcTemplate.queryForObject("select status from purchase_orders where id=?",String.class,id)).isEqualTo("ORDERED");
+        } finally {pool.shutdownNow();}
+    }
+
     private Long insertActor(String suffix) {
         String login = "mysql-po-" + suffix;
         jdbcTemplate.update("""

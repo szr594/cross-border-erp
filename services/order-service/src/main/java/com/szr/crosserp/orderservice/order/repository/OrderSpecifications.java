@@ -21,6 +21,10 @@ public final class OrderSpecifications {
     }
 
     public static Specification<SalesOrder> from(OrderQuery request) {
+        return from(request, new com.szr.crosserp.orderservice.order.service.FulfillmentFactsClient.Snapshot(java.util.Map.of(), java.util.Map.of(), java.util.List.of()));
+    }
+    public static Specification<SalesOrder> from(OrderQuery request,
+        com.szr.crosserp.orderservice.order.service.FulfillmentFactsClient.Snapshot snapshot) {
         return (root, query, builder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (request.keyword() != null && !request.keyword().isBlank()) {
@@ -60,12 +64,16 @@ public final class OrderSpecifications {
             if (request.exceptionOnly()) {
                 predicates.add(builder.isTrue(root.get("fulfillmentException")));
             }
-            predicates.add(stage(request.stage()).toPredicate(root, query, builder));
+            predicates.add(stage(request.stage(), snapshot).toPredicate(root, query, builder));
             return builder.and(predicates.toArray(Predicate[]::new));
         };
     }
 
     public static Specification<SalesOrder> stage(String value) {
+        return stage(value, new com.szr.crosserp.orderservice.order.service.FulfillmentFactsClient.Snapshot(java.util.Map.of(), java.util.Map.of(), java.util.List.of()));
+    }
+    public static Specification<SalesOrder> stage(String value,
+        com.szr.crosserp.orderservice.order.service.FulfillmentFactsClient.Snapshot snapshot) {
         return (root, query, builder) -> {
             String normalized = value == null || value.isBlank()
                 ? "ACTIONABLE"
@@ -86,15 +94,24 @@ public final class OrderSpecifications {
             } catch (IllegalArgumentException exception) {
                 return builder.disjunction();
             }
+            var packedIds = snapshot.packing().entrySet().stream().filter(e -> "COMPLETED".equals(e.getValue())).map(java.util.Map.Entry::getKey).toList();
+            var packingIds = snapshot.packing().entrySet().stream().filter(e -> "DRAFT".equals(e.getValue())).map(java.util.Map.Entry::getKey).toList();
+            Predicate packed = packedIds.isEmpty() ? builder.disjunction() : root.get("id").in(packedIds);
+            Predicate packing = packingIds.isEmpty() ? builder.disjunction() : root.get("id").in(packingIds);
+            Predicate ready = snapshot.readyOrderIds().isEmpty() ? builder.disjunction() : root.get("id").in(snapshot.readyOrderIds());
+            Predicate needsProcurement = builder.and(normalFlow, builder.not(packed), builder.not(packing), builder.not(ready));
             return switch (stage) {
                 case CANCELED -> builder.equal(root.get("externalStatus"), ExternalOrderStatus.CANCELED);
                 case EXCEPTION -> builder.and(notCanceled, builder.isTrue(root.get("fulfillmentException")));
                 case COMPLETED -> builder.and(notCanceled, noException,
                     builder.equal(root.get("externalStatus"), ExternalOrderStatus.DELIVERED));
-                case PROCUREMENT_IN_PROGRESS -> builder.and(normalFlow, converted);
-                case WAITING_PROCUREMENT -> builder.and(normalFlow, builder.not(converted), requested);
-                case PENDING -> builder.and(normalFlow, builder.not(converted), builder.not(requested));
-                default -> builder.disjunction();
+                case PACKED -> builder.and(normalFlow, packed);
+                case PACKING -> builder.and(normalFlow, builder.not(packed), packing);
+                case READY_FOR_PACKING -> builder.and(normalFlow, builder.not(packed), builder.not(packing), ready);
+                case PROCUREMENT_IN_PROGRESS -> builder.and(needsProcurement, converted);
+                case WAITING_PROCUREMENT -> builder.and(needsProcurement, builder.not(converted), requested);
+                case PENDING -> builder.and(needsProcurement, builder.not(converted), builder.not(requested));
+                case PARTIALLY_ALLOCATED, DOMESTIC_TRANSIT, PARTIALLY_RECEIVED, SHIPPED -> builder.disjunction();
             };
         };
     }

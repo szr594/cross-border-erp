@@ -4,12 +4,26 @@ import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { authState } from '@/api/auth'
+import { confirmPurchaseOrder } from '@/api/purchaseOrders'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
 import { ApiError } from '@/api/http'
 import { getPurchaseOrderDetail, getPurchaseOrderEvents, type PurchaseOrderDetail, type PurchaseOrderEventPage } from '@/api/purchaseOrders'
 import PurchaseOrderStatusTag from '@/components/procurement/PurchaseOrderStatusTag.vue'
 
 const route = useRoute()
 const router = useRouter()
+const ordering = ref(false)
+const canOrder = computed(() => detail.value?.status === 'DRAFT' && (authState.user?.roles.some(role => ['OWNER', 'PROCUREMENT'].includes(role)) ?? false))
+async function confirmOrder() {
+  if (!detail.value) return
+  try { await ElMessageBox.confirm('确认已向供应商下单？确认后允许登记包裹并收货。', '确认采购下单', { confirmButtonText: '确认下单', cancelButtonText: '取消' }) }
+  catch { return }
+  ordering.value = true
+  try { await confirmPurchaseOrder(detail.value.id, detail.value.version); ElMessage.success('采购单已下单'); await Promise.all([loadDetail(), loadEvents()]) }
+  catch (error) { ElMessage.error(error instanceof Error ? error.message : '确认下单失败') }
+  finally { ordering.value = false }
+}
 const loading = ref(false)
 const eventLoading = ref(false)
 const detail = ref<PurchaseOrderDetail | null>(null)
@@ -58,7 +72,7 @@ onMounted(refresh)
 
 <template>
   <section class="detail-page">
-    <div class="detail-actions"><el-button text :icon="ArrowLeft" @click="router.push('/procurement')">返回采购单工作台</el-button><el-button :icon="RefreshRight" :loading="loading" @click="refresh">刷新</el-button></div>
+    <div class="detail-actions"><el-button v-if="canOrder" type="primary" :loading="ordering" @click="confirmOrder">确认下单</el-button><el-button text :icon="ArrowLeft" @click="router.push('/procurement')">返回采购单工作台</el-button><el-button :icon="RefreshRight" :loading="loading" @click="refresh">刷新</el-button></div>
     <template v-if="detail">
       <section class="hero-card">
         <div><span class="section-kicker">{{ detail.supplier.name }}</span><h2>{{ detail.purchaseOrderNo }}</h2><p>{{ detail.externalOrderNo ? `外部单号 ${detail.externalOrderNo}` : '内部采购单' }}</p></div>
