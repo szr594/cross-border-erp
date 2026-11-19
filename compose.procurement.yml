@@ -1,0 +1,58 @@
+# Candidate deployment: procurement route remains unchanged until explicit cutover.
+services:
+  procurement-mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cross_erp_procurement
+      MYSQL_USER: procurement_app
+      MYSQL_PASSWORD: ${PROCUREMENT_DATABASE_PASSWORD:?Set PROCUREMENT_DATABASE_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${PROCUREMENT_MYSQL_ROOT_PASSWORD:?Set PROCUREMENT_MYSQL_ROOT_PASSWORD}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
+    volumes:
+      - procurement_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u procurement_app cross_erp_procurement -e 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  procurement:
+    image: cross-border-erp-production-procurement:${MS09_IMAGE_TAG:?Set MS09_IMAGE_TAG}
+    build:
+      context: .
+      dockerfile: services/procurement-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      PROCUREMENT_DATABASE_URL: jdbc:mysql://procurement-mysql:3306/cross_erp_procurement?connectionTimeZone=UTC
+      PROCUREMENT_DATABASE_USER: procurement_app
+      PROCUREMENT_DATABASE_PASSWORD: ${PROCUREMENT_DATABASE_PASSWORD:?Set PROCUREMENT_DATABASE_PASSWORD}
+      IDENTITY_PUBLIC_KEY: file:/run/keys/public.pem
+      IDENTITY_INTERNAL_URL: http://identity:8081
+      ORDER_SERVICE_INTERNAL_URL: http://order:8082
+      ORDER_INTERNAL_SERVICE_TOKEN: ${ORDER_INTERNAL_SERVICE_TOKEN:?Set ORDER_INTERNAL_SERVICE_TOKEN}
+      APP_PROCUREMENT_REMOTE_ENABLED: 'true'
+      APP_EVENTS_ENABLED: 'true'
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    volumes:
+      - ${IDENTITY_KEYS_DIR:?Set IDENTITY_KEYS_DIR}/public.pem:/run/keys/public.pem:ro
+    depends_on:
+      procurement-mysql:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+      order:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://127.0.0.1:8083/api/purchase-orders 2>&1 | grep -q '401'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+volumes:
+  procurement_mysql_data:

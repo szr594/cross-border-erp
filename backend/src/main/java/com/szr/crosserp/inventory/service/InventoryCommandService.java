@@ -19,8 +19,8 @@ import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.model.OrderItemFulfillmentStatus;
 import com.szr.crosserp.integration.orders.model.OrderItemProjection;
 import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
-import com.szr.crosserp.procurement.model.PurchaseOrderAllocation;
-import com.szr.crosserp.procurement.repository.PurchaseOrderAllocationRepository;
+import com.szr.crosserp.integration.procurement.model.PurchaseAllocationProjection;
+import com.szr.crosserp.integration.procurement.PurchaseAllocationProjectionRepository;
 import com.szr.crosserp.user.model.User;
 import com.szr.crosserp.user.repository.UserRepository;
 import java.time.Instant;
@@ -39,7 +39,7 @@ public class InventoryCommandService {
     private final InventoryLotRepository lotRepository;
     private final InventoryAllocationRepository allocationRepository;
     private final InventoryMovementRepository movementRepository;
-    private final PurchaseOrderAllocationRepository purchaseAllocationRepository;
+    private final PurchaseAllocationProjectionRepository purchaseAllocationRepository;
     private final OrderItemProjectionRepository orderItemRepository;
     private final UserRepository userRepository;
 
@@ -47,7 +47,7 @@ public class InventoryCommandService {
         InventoryLotRepository lotRepository,
         InventoryAllocationRepository allocationRepository,
         InventoryMovementRepository movementRepository,
-        PurchaseOrderAllocationRepository purchaseAllocationRepository,
+        PurchaseAllocationProjectionRepository purchaseAllocationRepository,
         OrderItemProjectionRepository orderItemRepository,
         UserRepository userRepository
     ) {
@@ -83,7 +83,7 @@ public class InventoryCommandService {
             || orderItem.getOrder().getExternalStatus() == ExternalOrderStatus.CANCELED) {
             throw conflict("INVENTORY_ORDER_ITEM_UNAVAILABLE", "订单明细不可分配库存");
         }
-        PurchaseOrderAllocation source = requireSource(lot, orderItem, request.quantity());
+        PurchaseAllocationProjection source = requireSource(lot, orderItem, request.quantity());
         long orderUsed = allocationRepository.sumActiveQuantityBySalesOrderItemId(orderItem.getId());
         if (request.quantity() > lot.getAvailableQuantity()
             || request.quantity() > orderItem.getQuantity() - orderUsed) {
@@ -200,8 +200,8 @@ public class InventoryCommandService {
         return response(lot, null, movement);
     }
 
-    private PurchaseOrderAllocation requireSource(InventoryLot lot, OrderItemProjection orderItem, int quantity) {
-        List<PurchaseOrderAllocation> sources = purchaseAllocationRepository
+    private PurchaseAllocationProjection requireSource(InventoryLot lot, OrderItemProjection orderItem, int quantity) {
+        List<PurchaseAllocationProjection> sources = purchaseAllocationRepository
             .findByPurchaseOrderItemIdIn(List.of(lot.getPurchaseOrderItem().getId())).stream()
             .filter(source -> source.getProcurementRequest().getOrderItem().getId().equals(orderItem.getId()))
             .filter(source -> source.getAllocatedQuantity()

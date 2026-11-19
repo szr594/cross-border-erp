@@ -13,7 +13,7 @@ public class ReceivingCommandFacade {
     public ConfirmGoodsReceiptResponse confirm(Long packageId,ConfirmGoodsReceiptRequest input,String actor,List<String> roles){
         OrderExecutionGate.requireRole(roles,java.util.Set.of("OWNER","WAREHOUSE"),"RECEIVING_FORBIDDEN");
         if(input.idempotencyKey()!=null&&jdbc.queryForObject("select count(*) from goods_receipts where idempotency_key=?",Long.class,input.idempotencyKey().trim())>0)return service.confirm(packageId,input,actor,roles);
-        var ids=jdbc.queryForList("select distinct i.order_id from domestic_packages p join purchase_order_items pi on pi.purchase_order_id=p.purchase_order_id join purchase_order_allocations a on a.purchase_order_item_id=pi.id join procurement_request_projections r on r.request_id=a.procurement_request_id join order_item_business_projections i on i.order_item_id=r.order_item_id where p.id=?",Long.class,packageId);
+        var ids=jdbc.queryForList("select distinct i.order_id from domestic_packages p join purchase_item_projections pi on pi.purchase_order_id=p.purchase_order_id join purchase_allocation_projections a on a.purchase_order_item_id=pi.id join procurement_request_projections r on r.request_id=a.procurement_request_id join order_item_business_projections i on i.order_item_id=r.order_item_id where p.id=?",Long.class,packageId);
         return gate.execute(ids,()->service.confirm(packageId,input,actor,roles));
     }
 }

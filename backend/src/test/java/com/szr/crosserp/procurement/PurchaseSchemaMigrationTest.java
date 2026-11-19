@@ -71,7 +71,7 @@ class PurchaseSchemaMigrationTest {
 
     @Test
     void laterMigrationsKeepAllPurchaseTables() throws Exception {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("19");
 
         Set<String> tables = new HashSet<>();
         try (Connection connection = dataSource.getConnection();

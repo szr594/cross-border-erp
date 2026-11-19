@@ -18,6 +18,7 @@ import jakarta.persistence.PreUpdate;
 import java.time.Instant;
 
 @Entity
+@jakarta.persistence.EntityListeners(com.szr.crosserp.integration.procurement.LegacyPurchaseProjectionListener.class)
 @Table(name = "purchase_orders")
 public class PurchaseOrder {
     @Id

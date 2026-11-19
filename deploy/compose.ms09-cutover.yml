@@ -1,0 +1,5 @@
+# Apply only after migration, projection handoff and business acceptance.
+services:
+  gateway:
+    environment:
+      PROCUREMENT_SERVICE_URL: http://procurement:8083

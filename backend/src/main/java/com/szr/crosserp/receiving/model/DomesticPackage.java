@@ -1,6 +1,6 @@
 package com.szr.crosserp.receiving.model;
 
-import com.szr.crosserp.procurement.model.PurchaseOrder;
+import com.szr.crosserp.integration.procurement.model.PurchaseOrderProjection;
 import com.szr.crosserp.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,7 +30,7 @@ public class DomesticPackage {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "purchase_order_id", nullable = false)
-    private PurchaseOrder purchaseOrder;
+    private PurchaseOrderProjection purchaseOrder;
 
     @Column(name = "tracking_number", nullable = false, length = 128)
     private String trackingNumber;
@@ -72,7 +72,7 @@ public class DomesticPackage {
     }
 
     public DomesticPackage(
-        String packageNo, PurchaseOrder purchaseOrder, String trackingNumber, String carrier,
+        String packageNo, PurchaseOrderProjection purchaseOrder, String trackingNumber, String carrier,
         Instant expectedAt, String note, User createdBy
     ) {
         this.packageNo = packageNo;
@@ -85,14 +85,16 @@ public class DomesticPackage {
     }
 
     public DomesticPackage(
-        String packageNo, PurchaseOrder purchaseOrder, String trackingNumber, String carrier, User createdBy
+        String packageNo, PurchaseOrderProjection purchaseOrder, String trackingNumber, String carrier, User createdBy
     ) {
         this(packageNo, purchaseOrder, trackingNumber, carrier, null, null, createdBy);
     }
 
+    public DomesticPackage(String number,com.szr.crosserp.procurement.model.PurchaseOrder order,String tracking,String carrier,Instant expected,String note,User actor){this(number,PurchaseOrderProjection.fromLegacy(order),tracking,carrier,expected,note,actor);}
+    public DomesticPackage(String number,com.szr.crosserp.procurement.model.PurchaseOrder order,String tracking,String carrier,User actor){this(number,order,tracking,carrier,null,null,actor);}
     public Long getId() { return id; }
     public String getPackageNo() { return packageNo; }
-    public PurchaseOrder getPurchaseOrder() { return purchaseOrder; }
+    public PurchaseOrderProjection getPurchaseOrder() { return purchaseOrder; }
     public String getTrackingNumber() { return trackingNumber; }
     public String getCarrier() { return carrier; }
     public DomesticPackageStatus getStatus() { return status; }

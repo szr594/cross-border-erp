@@ -1,6 +1,6 @@
 package com.szr.crosserp.inventory.model;
 
-import com.szr.crosserp.procurement.model.PurchaseOrderItem;
+import com.szr.crosserp.integration.procurement.model.PurchaseItemProjection;
 import com.szr.crosserp.receiving.model.GoodsReceiptItem;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,7 +34,7 @@ public class InventoryLot {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "purchase_order_item_id", nullable = false)
-    private PurchaseOrderItem purchaseOrderItem;
+    private PurchaseItemProjection purchaseOrderItem;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "quality_status", nullable = false, length = 32)
@@ -79,7 +79,7 @@ public class InventoryLot {
     }
 
     public InventoryLot(
-        String lotNo, GoodsReceiptItem goodsReceiptItem, PurchaseOrderItem purchaseOrderItem,
+        String lotNo, GoodsReceiptItem goodsReceiptItem, PurchaseItemProjection purchaseOrderItem,
         InventoryQualityStatus qualityStatus, int initialQuantity, Instant receivedAt
     ) {
         if (initialQuantity <= 0) {
@@ -100,10 +100,11 @@ public class InventoryLot {
         }
     }
 
+    public InventoryLot(String number,GoodsReceiptItem receipt,com.szr.crosserp.procurement.model.PurchaseOrderItem item,InventoryQualityStatus quality,int quantity,Instant at){this(number,receipt,PurchaseItemProjection.fromLegacy(item),quality,quantity,at);}
     public Long getId() { return id; }
     public String getLotNo() { return lotNo; }
     public GoodsReceiptItem getGoodsReceiptItem() { return goodsReceiptItem; }
-    public PurchaseOrderItem getPurchaseOrderItem() { return purchaseOrderItem; }
+    public PurchaseItemProjection getPurchaseOrderItem() { return purchaseOrderItem; }
     public InventoryQualityStatus getQualityStatus() { return qualityStatus; }
     public InventoryLotStatus getStatus() { return status; }
     public int getInitialQuantity() { return initialQuantity; }

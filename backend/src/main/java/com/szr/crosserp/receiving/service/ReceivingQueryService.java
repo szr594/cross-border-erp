@@ -2,8 +2,8 @@ package com.szr.crosserp.receiving.service;
 
 import com.szr.crosserp.common.exception.ApiException;
 import com.szr.crosserp.inventory.service.InventoryPostingService;
-import com.szr.crosserp.procurement.model.PurchaseOrderItem;
-import com.szr.crosserp.procurement.repository.PurchaseOrderItemRepository;
+import com.szr.crosserp.integration.procurement.model.PurchaseItemProjection;
+import com.szr.crosserp.integration.procurement.PurchaseItemProjectionRepository;
 import com.szr.crosserp.receiving.dto.DomesticPackageDetailResponse;
 import com.szr.crosserp.receiving.dto.DomesticPackageListItemResponse;
 import com.szr.crosserp.receiving.dto.DomesticPackagePageResponse;
@@ -45,7 +45,7 @@ public class ReceivingQueryService {
     private static final Set<String> WRITE_ROLES = Set.of("OWNER", "WAREHOUSE");
 
     private final DomesticPackageRepository packageRepository;
-    private final PurchaseOrderItemRepository purchaseItemRepository;
+    private final PurchaseItemProjectionRepository purchaseItemRepository;
     private final GoodsReceiptRepository receiptRepository;
     private final GoodsReceiptItemRepository receiptItemRepository;
     private final UnexpectedReceiptItemRepository unexpectedItemRepository;
@@ -54,7 +54,7 @@ public class ReceivingQueryService {
 
     public ReceivingQueryService(
         DomesticPackageRepository packageRepository,
-        PurchaseOrderItemRepository purchaseItemRepository,
+        PurchaseItemProjectionRepository purchaseItemRepository,
         GoodsReceiptRepository receiptRepository,
         GoodsReceiptItemRepository receiptItemRepository,
         UnexpectedReceiptItemRepository unexpectedItemRepository,
@@ -141,18 +141,18 @@ public class ReceivingQueryService {
     }
 
     private DomesticPackageListItemResponse listItem(DomesticPackage domesticPackage) {
-        List<PurchaseOrderItem> purchaseItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(
+        List<PurchaseItemProjection> purchaseItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(
             domesticPackage.getPurchaseOrder().getId()
         );
         List<GoodsReceiptItem> receiptItems = receiptItemRepository.findByPurchaseOrderItemIdInOrderByIdAsc(
-            purchaseItems.stream().map(PurchaseOrderItem::getId).toList()
+            purchaseItems.stream().map(PurchaseItemProjection::getId).toList()
         );
         return new DomesticPackageListItemResponse(
             domesticPackage.getId(), domesticPackage.getPackageNo(), domesticPackage.getTrackingNumber(),
             domesticPackage.getCarrier(), domesticPackage.getStatus(), domesticPackage.getPurchaseOrder().getId(),
             domesticPackage.getPurchaseOrder().getPurchaseOrderNo(), supplier(domesticPackage),
-            purchaseItems.stream().mapToInt(PurchaseOrderItem::getPurchasedQuantity).sum(),
-            purchaseItems.stream().mapToInt(PurchaseOrderItem::getReceivedQuantity).sum(),
+            purchaseItems.stream().mapToInt(PurchaseItemProjection::getPurchasedQuantity).sum(),
+            purchaseItems.stream().mapToInt(PurchaseItemProjection::getReceivedQuantity).sum(),
             receiptItems.stream().mapToInt(GoodsReceiptItem::getDamagedQuantity).sum(),
             domesticPackage.getFirstReceivedAt(), domesticPackage.getCompletedAt(), domesticPackage.getCreatedAt()
         );
@@ -160,9 +160,9 @@ public class ReceivingQueryService {
 
     private DomesticPackageDetailResponse detail(DomesticPackage domesticPackage, List<String> roles) {
         Long orderId = domesticPackage.getPurchaseOrder().getId();
-        List<PurchaseOrderItem> purchaseItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(orderId);
+        List<PurchaseItemProjection> purchaseItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(orderId);
         List<GoodsReceiptItem> receiptItems = receiptItemRepository.findByPurchaseOrderItemIdInOrderByIdAsc(
-            purchaseItems.stream().map(PurchaseOrderItem::getId).toList()
+            purchaseItems.stream().map(PurchaseItemProjection::getId).toList()
         );
         Map<Long, Integer> damagedByItem = new HashMap<>();
         receiptItems.forEach(item -> damagedByItem.merge(

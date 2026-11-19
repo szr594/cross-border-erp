@@ -1,6 +1,6 @@
 package com.szr.crosserp.receiving.model;
 
-import com.szr.crosserp.procurement.model.PurchaseOrderItem;
+import com.szr.crosserp.integration.procurement.model.PurchaseItemProjection;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -24,7 +24,7 @@ public class GoodsReceiptItem {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "purchase_order_item_id", nullable = false)
-    private PurchaseOrderItem purchaseOrderItem;
+    private PurchaseItemProjection purchaseOrderItem;
 
     @Column(name = "accepted_quantity", nullable = false)
     private int acceptedQuantity;
@@ -39,7 +39,7 @@ public class GoodsReceiptItem {
     }
 
     public GoodsReceiptItem(
-        GoodsReceipt goodsReceipt, PurchaseOrderItem purchaseOrderItem,
+        GoodsReceipt goodsReceipt, PurchaseItemProjection purchaseOrderItem,
         int acceptedQuantity, int damagedQuantity, String note
     ) {
         this.goodsReceipt = goodsReceipt;
@@ -49,9 +49,10 @@ public class GoodsReceiptItem {
         this.note = note;
     }
 
+    public GoodsReceiptItem(GoodsReceipt receipt,com.szr.crosserp.procurement.model.PurchaseOrderItem item,int accepted,int damaged,String note){this(receipt,PurchaseItemProjection.fromLegacy(item),accepted,damaged,note);}
     public Long getId() { return id; }
     public GoodsReceipt getGoodsReceipt() { return goodsReceipt; }
-    public PurchaseOrderItem getPurchaseOrderItem() { return purchaseOrderItem; }
+    public PurchaseItemProjection getPurchaseOrderItem() { return purchaseOrderItem; }
     public int getAcceptedQuantity() { return acceptedQuantity; }
     public int getDamagedQuantity() { return damagedQuantity; }
     public String getNote() { return note; }

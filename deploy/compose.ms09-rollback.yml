@@ -1,0 +1,8 @@
+# Stop procurement writers and drain queues; run reverse migration before applying.
+services:
+  backend:
+    environment:
+      APP_PROCUREMENT_PROJECTION_ENABLED: 'false'
+  gateway:
+    environment:
+      PROCUREMENT_SERVICE_URL: ''

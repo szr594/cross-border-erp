@@ -1,0 +1,27 @@
+services:
+  backend:
+    image: cross-border-erp-production-backend:${MS09_IMAGE_TAG:?Set MS09_IMAGE_TAG}
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+      APP_EVENTS_ENABLED: 'true'
+      APP_PROCUREMENT_REMOTE_ENABLED: 'true'
+      ORDER_SERVICE_INTERNAL_URL: http://order:8082
+      ORDER_INTERNAL_SERVICE_TOKEN: ${ORDER_INTERNAL_SERVICE_TOKEN:?Set ORDER_INTERNAL_SERVICE_TOKEN}
+  gateway:
+    image: cross-border-erp-production-gateway:${MS09_IMAGE_TAG:?Set MS09_IMAGE_TAG}
+    environment:
+      ORDER_SERVICE_URL: http://order:8082
+  order:
+    image: cross-border-erp-production-order:${MS09_IMAGE_TAG:?Set MS09_IMAGE_TAG}
+    environment:
+      ORDER_INTERNAL_SERVICE_TOKEN: ${ORDER_INTERNAL_SERVICE_TOKEN:?Set ORDER_INTERNAL_SERVICE_TOKEN}
+      IDENTITY_INTERNAL_URL: http://identity:8081
+      LEGACY_BACKEND_INTERNAL_URL: http://backend:8090
+  identity:
+    image: cross-border-erp-production-identity:${MS09_IMAGE_TAG:?Set MS09_IMAGE_TAG}
+    environment:
+      ORDER_INTERNAL_SERVICE_TOKEN: ${ORDER_INTERNAL_SERVICE_TOKEN:?Set ORDER_INTERNAL_SERVICE_TOKEN}
+  frontend:
+    image: cross-border-erp-production-frontend:${MS09_IMAGE_TAG:?Set MS09_IMAGE_TAG}

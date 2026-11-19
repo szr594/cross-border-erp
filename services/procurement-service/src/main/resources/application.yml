@@ -1,0 +1,31 @@
+spring:
+  rabbitmq:
+    publisher-confirm-type: simple
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 200ms
+          multiplier: 2
+          max-interval: 1s
+  application:
+    name: procurement-service
+  datasource:
+    url: ${PROCUREMENT_DATABASE_URL}
+    username: ${PROCUREMENT_DATABASE_USER}
+    password: ${PROCUREMENT_DATABASE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+server:
+  port: ${PROCUREMENT_PORT:8083}
+app:
+  auth:
+    public-key: ${IDENTITY_PUBLIC_KEY}

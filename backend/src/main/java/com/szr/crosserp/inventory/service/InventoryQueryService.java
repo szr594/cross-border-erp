@@ -28,8 +28,8 @@ import com.szr.crosserp.integration.orders.model.OrderProjection;
 import com.szr.crosserp.integration.orders.model.OrderItemProjection;
 import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
 import com.szr.crosserp.integration.orders.OrderProjectionRepository;
-import com.szr.crosserp.procurement.model.PurchaseOrder;
-import com.szr.crosserp.procurement.model.PurchaseOrderItem;
+import com.szr.crosserp.integration.procurement.model.PurchaseOrderProjection;
+import com.szr.crosserp.integration.procurement.model.PurchaseItemProjection;
 import com.szr.crosserp.receiving.model.DomesticPackage;
 import com.szr.crosserp.receiving.model.GoodsReceipt;
 import com.szr.crosserp.user.model.User;
@@ -179,13 +179,13 @@ public class InventoryQueryService {
         );
     }
 
-    private InventoryProductResponse product(PurchaseOrderItem item) {
+    private InventoryProductResponse product(PurchaseItemProjection item) {
         return new InventoryProductResponse(
             item.getId(), item.getSupplierSku(), item.getProductName(), item.getVariantName(), item.getImageUrl()
         );
     }
 
-    private InventoryPurchaseSourceResponse purchaseSource(PurchaseOrder order) {
+    private InventoryPurchaseSourceResponse purchaseSource(PurchaseOrderProjection order) {
         return new InventoryPurchaseSourceResponse(
             order.getId(), order.getPurchaseOrderNo(), order.getStatus(), order.getSupplier().getId(),
             order.getSupplier().getCode(), order.getSupplier().getName()

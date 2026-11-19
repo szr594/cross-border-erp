@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 @Entity
+@jakarta.persistence.EntityListeners(com.szr.crosserp.integration.procurement.LegacyPurchaseProjectionListener.class)
 @Table(name = "purchase_order_allocations")
 public class PurchaseOrderAllocation {
     @Id

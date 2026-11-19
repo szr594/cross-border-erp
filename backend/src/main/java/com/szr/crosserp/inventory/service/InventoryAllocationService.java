@@ -13,8 +13,8 @@ import com.szr.crosserp.order.model.ExternalOrderStatus;
 import com.szr.crosserp.order.model.OrderItemFulfillmentStatus;
 import com.szr.crosserp.integration.orders.model.OrderItemProjection;
 import com.szr.crosserp.integration.orders.OrderItemProjectionRepository;
-import com.szr.crosserp.procurement.model.PurchaseOrderAllocation;
-import com.szr.crosserp.procurement.repository.PurchaseOrderAllocationRepository;
+import com.szr.crosserp.integration.procurement.model.PurchaseAllocationProjection;
+import com.szr.crosserp.integration.procurement.PurchaseAllocationProjectionRepository;
 import com.szr.crosserp.user.model.User;
 import java.time.Instant;
 import java.util.Comparator;
@@ -28,14 +28,14 @@ public class InventoryAllocationService {
     private final InventoryLotRepository lotRepository;
     private final InventoryAllocationRepository allocationRepository;
     private final InventoryMovementRepository movementRepository;
-    private final PurchaseOrderAllocationRepository purchaseAllocationRepository;
+    private final PurchaseAllocationProjectionRepository purchaseAllocationRepository;
     private final OrderItemProjectionRepository salesOrderItemRepository;
 
     public InventoryAllocationService(
         InventoryLotRepository lotRepository,
         InventoryAllocationRepository allocationRepository,
         InventoryMovementRepository movementRepository,
-        PurchaseOrderAllocationRepository purchaseAllocationRepository,
+        PurchaseAllocationProjectionRepository purchaseAllocationRepository,
         OrderItemProjectionRepository salesOrderItemRepository
     ) {
         this.lotRepository = lotRepository;
@@ -51,13 +51,13 @@ public class InventoryAllocationService {
         if (lot.getQualityStatus() != InventoryQualityStatus.ACCEPTED || lot.getAvailableQuantity() == 0) {
             return List.of();
         }
-        List<PurchaseOrderAllocation> sources = purchaseAllocationRepository
+        List<PurchaseAllocationProjection> sources = purchaseAllocationRepository
             .findByPurchaseOrderItemIdIn(List.of(lot.getPurchaseOrderItem().getId()))
             .stream()
             .sorted(sourceOrder())
             .toList();
         java.util.ArrayList<Long> allocationIds = new java.util.ArrayList<>();
-        for (PurchaseOrderAllocation source : sources) {
+        for (PurchaseAllocationProjection source : sources) {
             if (lot.getAvailableQuantity() == 0) {
                 break;
             }
@@ -108,15 +108,15 @@ public class InventoryAllocationService {
         return List.copyOf(allocationIds);
     }
 
-    private Comparator<PurchaseOrderAllocation> sourceOrder() {
+    private Comparator<PurchaseAllocationProjection> sourceOrder() {
         return Comparator
             .comparing(
-                (PurchaseOrderAllocation source) -> source.getProcurementRequest().getOrderItem()
+                (PurchaseAllocationProjection source) -> source.getProcurementRequest().getOrderItem()
                     .getOrder().getRequestedShipAt(),
                 Comparator.nullsLast(Comparator.naturalOrder())
             )
             .thenComparing(source -> source.getProcurementRequest().getOrderItem().getOrder().getId())
             .thenComparing(source -> source.getProcurementRequest().getOrderItem().getId())
-            .thenComparing(PurchaseOrderAllocation::getId);
+            .thenComparing(PurchaseAllocationProjection::getId);
     }
 }

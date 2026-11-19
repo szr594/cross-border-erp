@@ -2,11 +2,11 @@ package com.szr.crosserp.receiving.service;
 
 import com.szr.crosserp.common.exception.ApiException;
 import com.szr.crosserp.inventory.service.InventoryPostingService;
-import com.szr.crosserp.procurement.model.PurchaseOrder;
-import com.szr.crosserp.procurement.model.PurchaseOrderItem;
+import com.szr.crosserp.integration.procurement.model.PurchaseOrderProjection;
+import com.szr.crosserp.integration.procurement.model.PurchaseItemProjection;
 import com.szr.crosserp.procurement.model.PurchaseOrderStatus;
-import com.szr.crosserp.procurement.repository.PurchaseOrderItemRepository;
-import com.szr.crosserp.procurement.repository.PurchaseOrderRepository;
+import com.szr.crosserp.integration.procurement.PurchaseItemProjectionRepository;
+import com.szr.crosserp.integration.procurement.PurchaseOrderProjectionRepository;
 import com.szr.crosserp.receiving.dto.CancelDomesticPackageRequest;
 import com.szr.crosserp.receiving.dto.ConfirmGoodsReceiptRequest;
 import com.szr.crosserp.receiving.dto.ConfirmGoodsReceiptResponse;
@@ -49,6 +49,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReceivingCommandService {
+    @org.springframework.beans.factory.annotation.Autowired private com.szr.crosserp.integration.procurement.LegacyPurchaseProjectionListener legacyPurchases;
+    @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
+    @org.springframework.beans.factory.annotation.Autowired private com.szr.crosserp.integration.procurement.ReceivingOutbox receivingOutbox;
     private static final Set<String> WRITE_ROLES = Set.of("OWNER", "WAREHOUSE");
     private static final Set<PurchaseOrderStatus> RECEIVABLE_STATUSES = Set.of(
         PurchaseOrderStatus.ORDERED, PurchaseOrderStatus.PARTIALLY_RECEIVED
@@ -56,8 +59,8 @@ public class ReceivingCommandService {
     private static final DateTimeFormatter NUMBER_DATE = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC);
 
     private final DomesticPackageRepository packageRepository;
-    private final PurchaseOrderRepository purchaseOrderRepository;
-    private final PurchaseOrderItemRepository purchaseItemRepository;
+    private final PurchaseOrderProjectionRepository purchaseOrderRepository;
+    private final PurchaseItemProjectionRepository purchaseItemRepository;
     private final GoodsReceiptRepository receiptRepository;
     private final GoodsReceiptItemRepository receiptItemRepository;
     private final UnexpectedReceiptItemRepository unexpectedItemRepository;
@@ -67,8 +70,8 @@ public class ReceivingCommandService {
 
     public ReceivingCommandService(
         DomesticPackageRepository packageRepository,
-        PurchaseOrderRepository purchaseOrderRepository,
-        PurchaseOrderItemRepository purchaseItemRepository,
+        PurchaseOrderProjectionRepository purchaseOrderRepository,
+        PurchaseItemProjectionRepository purchaseItemRepository,
         GoodsReceiptRepository receiptRepository,
         GoodsReceiptItemRepository receiptItemRepository,
         UnexpectedReceiptItemRepository unexpectedItemRepository,
@@ -93,8 +96,13 @@ public class ReceivingCommandService {
     ) {
         requireWriteRole(roles);
         User actor = requireActor(subject);
-        PurchaseOrder order = purchaseOrderRepository.findById(command.purchaseOrderId())
+        entityManager.flush();
+        legacyPurchases.refreshLegacy(command.purchaseOrderId());
+        PurchaseOrderProjection order = purchaseOrderRepository.findById(command.purchaseOrderId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PURCHASE_ORDER_NOT_FOUND", "采购单不存在"));
+        entityManager.flush();
+        legacyPurchases.refreshLegacy(order.getId());
+        entityManager.refresh(order);
         requireBridgeConfirmed(order);
         if (!RECEIVABLE_STATUSES.contains(order.getStatus())) {
             throw notReceivable();
@@ -138,22 +146,26 @@ public class ReceivingCommandService {
         if (domesticPackage.getStatus() == DomesticPackageStatus.CANCELED) {
             throw notReceivable();
         }
-        PurchaseOrder order = purchaseOrderRepository.findByIdForUpdate(domesticPackage.getPurchaseOrder().getId())
+        PurchaseOrderProjection order = purchaseOrderRepository.findByIdForUpdate(domesticPackage.getPurchaseOrder().getId())
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PURCHASE_ORDER_NOT_FOUND", "采购单不存在"));
+        entityManager.flush();
+        legacyPurchases.refreshLegacy(order.getId());
+        entityManager.refresh(order);
         requireBridgeConfirmed(order);
         if (!RECEIVABLE_STATUSES.contains(order.getStatus())) {
             throw notReceivable();
         }
 
-        List<PurchaseOrderItem> orderItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(order.getId());
-        List<Long> orderItemIds = orderItems.stream().map(PurchaseOrderItem::getId).sorted().toList();
-        List<PurchaseOrderItem> lockedItems = purchaseItemRepository.findAllForUpdateByIdIn(orderItemIds);
-        Map<Long, PurchaseOrderItem> itemsById = new HashMap<>();
+        List<PurchaseItemProjection> orderItems = purchaseItemRepository.findByPurchaseOrderIdOrderByIdAsc(order.getId());
+        List<Long> orderItemIds = orderItems.stream().map(PurchaseItemProjection::getId).sorted().toList();
+        List<PurchaseItemProjection> lockedItems = purchaseItemRepository.findAllForUpdateByIdIn(orderItemIds);
+        lockedItems.forEach(entityManager::refresh);
+        Map<Long, PurchaseItemProjection> itemsById = new HashMap<>();
         lockedItems.forEach(item -> itemsById.put(item.getId(), item));
         Map<Long, Integer> previousDamaged = damagedByItem(orderItemIds);
 
         for (ConfirmReceiptItemCommand itemCommand : command.items()) {
-            PurchaseOrderItem item = itemsById.get(itemCommand.purchaseOrderItemId());
+            PurchaseItemProjection item = itemsById.get(itemCommand.purchaseOrderItemId());
             if (item == null) {
                 throw new ApiException(
                     HttpStatus.NOT_FOUND, "PURCHASE_ORDER_ITEM_NOT_FOUND", "采购商品不存在或不属于当前采购单"
@@ -190,7 +202,7 @@ public class ReceivingCommandService {
         Map<Long, Integer> allDamaged = damagedByItem(orderItemIds);
         boolean anyInspected = false;
         boolean allInspected = true;
-        for (PurchaseOrderItem item : lockedItems) {
+        for (PurchaseItemProjection item : lockedItems) {
             int inspected = item.getReceivedQuantity() + allDamaged.getOrDefault(item.getId(), 0);
             anyInspected |= inspected > 0;
             allInspected &= inspected == item.getPurchasedQuantity();
@@ -221,7 +233,14 @@ public class ReceivingCommandService {
             ));
         }
         packageRepository.flush();
-        return receiptResponse(receipt);
+        legacyPurchases.mirrorReceiving(order.getId());
+  var oldOrder=entityManager.find(com.szr.crosserp.procurement.model.PurchaseOrder.class,order.getId());if(oldOrder!=null)entityManager.refresh(oldOrder);
+  for(Long itemId:orderItemIds){
+   var oldItem=entityManager.find(com.szr.crosserp.procurement.model.PurchaseOrderItem.class,itemId);if(oldItem!=null)entityManager.refresh(oldItem);
+  }
+
+        receivingOutbox.snapshot(order.getId(), receipt.getId());
+        return new ConfirmGoodsReceiptResponse(receipt.getId(),receipt.getReceiptNo(),domesticPackage.getId(),domesticPackage.getStatus(),order.getStatus(),inventoryPostingService.isPosted(receipt));
     }
 
     @Transactional
@@ -303,7 +322,7 @@ public class ReceivingCommandService {
     private ConfirmGoodsReceiptResponse receiptResponse(GoodsReceipt receipt) {
         return new ConfirmGoodsReceiptResponse(
             receipt.getId(), receipt.getReceiptNo(), receipt.getDomesticPackage().getId(),
-            receipt.getDomesticPackage().getStatus(), receipt.getDomesticPackage().getPurchaseOrder().getStatus(),
+            receipt.getDomesticPackage().getStatus(), purchaseOrderRepository.findById(receipt.getDomesticPackage().getPurchaseOrder().getId()).orElseThrow().getStatus(),
             inventoryPostingService.isPosted(receipt)
         );
     }
@@ -337,7 +356,7 @@ public class ReceivingCommandService {
     private String normalizeForHash(String value) { return value == null ? "" : value.trim(); }
     private ApiException invalid(String message) { return new ApiException(HttpStatus.BAD_REQUEST, "RECEIPT_INVALID", message); }
     private ApiException conflict(String code, String message) { return new ApiException(HttpStatus.CONFLICT, code, message); }
-    private void requireBridgeConfirmed(PurchaseOrder order) {
+    private void requireBridgeConfirmed(PurchaseOrderProjection order) {
         if (!order.isBridgeConfirmed()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "PURCHASE_OPERATION_PENDING", "采购认领尚未确认，请稍后重试");
         }

@@ -1,7 +1,7 @@
 package com.szr.crosserp.inventory.model;
 
 import com.szr.crosserp.integration.orders.model.OrderItemProjection;
-import com.szr.crosserp.procurement.model.PurchaseOrderAllocation;
+import com.szr.crosserp.integration.procurement.model.PurchaseAllocationProjection;
 import com.szr.crosserp.user.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,7 +37,7 @@ public class InventoryAllocation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "purchase_order_allocation_id")
-    private PurchaseOrderAllocation purchaseOrderAllocation;
+    private PurchaseAllocationProjection purchaseOrderAllocation;
 
     @Column(nullable = false)
     private int quantity;
@@ -72,7 +72,7 @@ public class InventoryAllocation {
 
     public InventoryAllocation(
         String allocationNo, InventoryLot inventoryLot, OrderItemProjection salesOrderItem,
-        PurchaseOrderAllocation purchaseOrderAllocation, int quantity, User allocatedBy, Instant allocatedAt
+        PurchaseAllocationProjection purchaseOrderAllocation, int quantity, User allocatedBy, Instant allocatedAt
     ) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("quantity must be positive");
@@ -86,14 +86,15 @@ public class InventoryAllocation {
         this.allocatedAt = allocatedAt;
     }
 
+    public InventoryAllocation(String number,InventoryLot lot,OrderItemProjection item,com.szr.crosserp.procurement.model.PurchaseOrderAllocation source,int quantity,User actor,Instant at){this(number,lot,item,PurchaseAllocationProjection.fromLegacy(source),quantity,actor,at);}
     public Long getId() { return id; }
     public String getAllocationNo() { return allocationNo; }
     public InventoryLot getInventoryLot() { return inventoryLot; }
-    public InventoryAllocation(String number,InventoryLot lot,com.szr.crosserp.order.model.SalesOrderItem item,PurchaseOrderAllocation source,int quantity,User actor,Instant at){
-        this(number,lot,OrderItemProjection.fromLegacy(item),source,quantity,actor,at);
+    public InventoryAllocation(String number,InventoryLot lot,com.szr.crosserp.order.model.SalesOrderItem item,com.szr.crosserp.procurement.model.PurchaseOrderAllocation source,int quantity,User actor,Instant at){
+        this(number,lot,OrderItemProjection.fromLegacy(item),PurchaseAllocationProjection.fromLegacy(source),quantity,actor,at);
     }
     public OrderItemProjection getSalesOrderItem() { return salesOrderItem; }
-    public PurchaseOrderAllocation getPurchaseOrderAllocation() { return purchaseOrderAllocation; }
+    public PurchaseAllocationProjection getPurchaseOrderAllocation() { return purchaseOrderAllocation; }
     public int getQuantity() { return quantity; }
     public InventoryAllocationStatus getStatus() { return status; }
     public User getAllocatedBy() { return allocatedBy; }

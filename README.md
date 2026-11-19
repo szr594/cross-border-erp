@@ -15,9 +15,9 @@
 
 ## 当前阶段
 
-微服务迁移已完成统一网关和独立 Identity 认证服务，并在 VMware Linux 完成切换及页面验收。Identity 使用独立 MySQL 实例与受限账号，签发 RS256 JWT；网关和业务后端仅持公钥。业务模块仍由保留的单体后端提供。部署使用 `compose.production.yml` 叠加 `compose.identity.yml`，详见 [切换说明](docs/identity-cutover.md)和[验收记录](docs/identity-cutover-acceptance.md)。
+微服务迁移已完成统一网关、独立 Identity、Order 与 Procurement 服务，并在 VMware Linux 部署固定版本 `ms09-20261119-candidate1`。认证、订单和采购分别使用独立 MySQL 数据库；旧 `backend` 继续承载收货、库存和打包，通过本地投影及 RabbitMQ、Outbox/Inbox 与独立服务协作。尚未完成仓库和打包的独立服务拆分。
 
-本地迁移代码已补齐独立 Order 的采购需求事件、需求投影、采购来源以及库存/打包关联替换，并接入权威执行占用和同步取消释放。虚拟机上的 Order/RabbitMQ 仍为影子部署，新关联版本和生产订单写路由尚未切换；本地验收范围见 [采购投影与履约关联记录](docs/procurement-projection-acceptance.md)。
+MS-09 已通过本地真实 MySQL/RabbitMQ 完整履约、重复消息与重启恢复、新增采购数据反向回填专项，以及虚拟机空采购数据回退、恢复 MS-09 和页面检查。整机重启后最终恢复、镜像/重启策略及数据计数检查通过，但 2 核虚拟机冷启动明显缓慢，恢复时效尚未达标；虚拟机未演练带新增采购数据的回退。详见 [MS-09 验收记录](docs/ms09-vm-acceptance.md)和[发布步骤](docs/ms09-release-runbook.md)。
 
 项目已经实现 JWT 认证，以及订单 CSV 导入、订单管理、采购、收货、库存和打包组成的完整 MVP 业务闭环。库存模块支持可追溯批次、自动与人工分配、释放分配、库存调整、隔离库存转可用，以及订单取消时自动释放库存预留。打包模块支持查询待打包订单、多箱商品分配、不可变的打包完成记录，以及在同一事务中原子扣减已预留库存。仅老板角色可使用 CSV 导入工作台；系统会先校验项目规定的 CSV 模板，再以原子操作创建订单，并在不保留原始文件的前提下提供安全的行级错误信息。
 

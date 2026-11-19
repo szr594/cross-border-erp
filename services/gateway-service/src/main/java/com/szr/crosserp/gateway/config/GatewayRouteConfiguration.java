@@ -13,7 +13,8 @@ public class GatewayRouteConfiguration {
     @Bean
     RouteLocator gatewayRoutes(RouteLocatorBuilder builder, GatewayRouteProperties properties,
         @org.springframework.beans.factory.annotation.Value("${IDENTITY_SERVICE_URL:}") String identityUrl,
-        @org.springframework.beans.factory.annotation.Value("${ORDER_SERVICE_URL:}") String orderUrl) {
+        @org.springframework.beans.factory.annotation.Value("${ORDER_SERVICE_URL:}") String orderUrl,
+        @org.springframework.beans.factory.annotation.Value("${PROCUREMENT_SERVICE_URL:}") String procurementUrl) {
         var routes = builder.routes();
         if (!identityUrl.isBlank()) {
             var uri = java.net.URI.create(identityUrl);
@@ -30,10 +31,19 @@ public class GatewayRouteConfiguration {
                 .uri(properties.legacyBackendUri()));
             routes.route("order-api", route -> route.path("/api/orders", "/api/orders/**", "/api/order-imports", "/api/order-imports/**").uri(uri));
         }
+        if (!procurementUrl.isBlank()) {
+            var uri=java.net.URI.create(procurementUrl);
+            if(!java.util.Set.of("http","https").contains(uri.getScheme()) || uri.getHost()==null)throw new IllegalArgumentException("Invalid procurement service URL");
+            routes.route("procurement-api",route->route.path("/api/suppliers","/api/suppliers/**","/api/purchase-orders","/api/purchase-orders/**").uri(uri));
+        }
         return routes
             .route("legacy-api", route -> route
                 .path("/api/**")
                 .uri(properties.legacyBackendUri()))
             .build();
     }
+    RouteLocator gatewayRoutes(RouteLocatorBuilder builder,GatewayRouteProperties properties,String identityUrl,String orderUrl){
+        return gatewayRoutes(builder,properties,identityUrl,orderUrl,"");
+    }
+
 }

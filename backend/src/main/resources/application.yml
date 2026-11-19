@@ -1,5 +1,6 @@
 spring:
   rabbitmq:
+    publisher-confirm-type: simple
     host: ${RABBITMQ_HOST:127.0.0.1}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
